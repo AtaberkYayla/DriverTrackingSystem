@@ -55,4 +55,18 @@ class MasterDataRepository {
 
   Future<void> upsertCompany(Company company) =>
       supabase.from('companies').upsert(company.toJson());
+
+  // Silme islemleri sadece yonetici/admin'e acik (RLS, bkz. migration_002).
+  // Baska bir seferde kullanilan bir kayit silinmeye calisilirsa Postgrest
+  // FK ihlali hatasi firlatir; cagiran taraf bunu yakalayip kullaniciya
+  // "pasife alin" mesaji gostermelidir.
+  Future<void> deleteVehicle(String id) => supabase.from('vehicles').delete().eq('id', id);
+
+  Future<void> deleteTripType(String id) => supabase.from('trip_types').delete().eq('id', id);
+
+  Future<void> deleteRequester(String id) => supabase.from('requesters').delete().eq('id', id);
+
+  Future<void> deleteManager(String id) => supabase.from('managers').delete().eq('id', id);
+
+  Future<void> deleteCompany(String id) => supabase.from('companies').delete().eq('id', id);
 }

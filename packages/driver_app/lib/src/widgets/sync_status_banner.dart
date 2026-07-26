@@ -26,7 +26,7 @@ class SyncStatusBanner extends ConsumerWidget {
         return _bar(
           context,
           icon: Icons.cloud_upload_outlined,
-          text: 'Bekleyen $pending kayit senkronize edilecek',
+          text: 'Bekleyen $pending kayıt senkronize edilecek',
           color: Colors.orange,
         );
       },
@@ -39,7 +39,7 @@ class SyncStatusBanner extends ConsumerWidget {
       error: (_, _) => _bar(
         context,
         icon: Icons.cloud_off_outlined,
-        text: 'Baglanti yok',
+        text: 'Bağlantı yok',
         color: Colors.red,
       ),
     );

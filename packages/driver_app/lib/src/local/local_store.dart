@@ -101,6 +101,13 @@ class LocalStore {
         .get();
   }
 
+  Stream<List<TripStopsCacheData>> duraklariIzle(String clientTripId) {
+    return (_db.select(_db.tripStopsCache)
+          ..where((s) => s.clientTripId.equals(clientTripId))
+          ..orderBy([(s) => OrderingTerm.asc(s.sira)]))
+        .watch();
+  }
+
   Future<int> sonrakiDurakSirasi(String clientTripId) async {
     final mevcut = await duraklarGetir(clientTripId);
     return mevcut.length + 1;

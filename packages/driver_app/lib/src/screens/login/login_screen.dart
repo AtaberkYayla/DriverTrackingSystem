@@ -36,7 +36,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             password: _passwordController.text,
           );
     } catch (e) {
-      setState(() => _hata = 'Giris basarisiz. Kullanici adi veya sifre hatali.');
+      setState(() => _hata = 'Giriş başarısız. Kullanıcı adı veya şifre hatalı.');
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -58,7 +58,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   const Icon(Icons.local_shipping, size: 72),
                   const SizedBox(height: 12),
                   Text(
-                    'Dedem Mekatronik\nSofor Takip Sistemi',
+                    'Dedem Mekatronik\nŞoför Takip Sistemi',
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.headlineSmall,
                   ),
@@ -66,26 +66,26 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   TextFormField(
                     controller: _usernameController,
                     decoration: const InputDecoration(
-                      labelText: 'Kullanici adi',
+                      labelText: 'Kullanıcı adı',
                       prefixIcon: Icon(Icons.person_outline),
                       border: OutlineInputBorder(),
                     ),
                     textInputAction: TextInputAction.next,
                     validator: (v) =>
-                        (v == null || v.trim().isEmpty) ? 'Kullanici adi giriniz' : null,
+                        (v == null || v.trim().isEmpty) ? 'Kullanıcı adı giriniz' : null,
                   ),
                   const SizedBox(height: 16),
                   TextFormField(
                     controller: _passwordController,
                     decoration: const InputDecoration(
-                      labelText: 'Sifre',
+                      labelText: 'Şifre',
                       prefixIcon: Icon(Icons.lock_outline),
                       border: OutlineInputBorder(),
                     ),
                     obscureText: true,
                     textInputAction: TextInputAction.done,
                     onFieldSubmitted: (_) => _girisYap(),
-                    validator: (v) => (v == null || v.isEmpty) ? 'Sifre giriniz' : null,
+                    validator: (v) => (v == null || v.isEmpty) ? 'Şifre giriniz' : null,
                   ),
                   if (_hata != null) ...[
                     const SizedBox(height: 12),
@@ -100,11 +100,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             height: 20,
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
-                        : const Text('Giris Yap'),
+                        : const Text('Giriş Yap'),
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Giris yaptiktan sonra oturumunuz acik kalir.',
+                    'Giriş yaptıktan sonra oturumunuz açık kalır.',
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.bodySmall,
                   ),

@@ -53,7 +53,7 @@ class SoforTakipApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Sofor Takip Sistemi',
+      title: 'Şoför Takip Sistemi',
       debugShowCheckedModeBanner: false,
       locale: const Locale('tr'),
       supportedLocales: const [Locale('tr')],

@@ -1,29 +1,27 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'profile.dart';
+part of 'account.dart';
 
 // **************************************************************************
 // JsonSerializableGenerator
 // **************************************************************************
 
-Profile _$ProfileFromJson(Map<String, dynamic> json) => Profile(
+Account _$AccountFromJson(Map<String, dynamic> json) => Account(
   id: json['id'] as String,
   fullName: json['full_name'] as String,
+  email: json['email'] as String,
   role: $enumDecode(_$AppRoleEnumMap, json['role']),
-  phone: json['phone'] as String?,
-  aktif: json['aktif'] as bool? ?? true,
-  notificationEmail: json['notification_email'] as String?,
-  emailBildirimAktif: json['email_bildirim_aktif'] as bool? ?? true,
+  aktif: json['aktif'] as bool,
+  createdAt: DateTime.parse(json['created_at'] as String),
 );
 
-Map<String, dynamic> _$ProfileToJson(Profile instance) => <String, dynamic>{
+Map<String, dynamic> _$AccountToJson(Account instance) => <String, dynamic>{
   'id': instance.id,
   'full_name': instance.fullName,
+  'email': instance.email,
   'role': instance.role,
-  'phone': instance.phone,
   'aktif': instance.aktif,
-  'notification_email': instance.notificationEmail,
-  'email_bildirim_aktif': instance.emailBildirimAktif,
+  'created_at': instance.createdAt.toIso8601String(),
 };
 
 const _$AppRoleEnumMap = {

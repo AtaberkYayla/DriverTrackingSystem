@@ -33,24 +33,24 @@ class _ActiveTripScreenState extends ConsumerState<ActiveTripScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.history),
-            tooltip: 'Sefer Gecmisi',
+            tooltip: 'Sefer Geçmişi',
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => const TripHistoryScreen()),
             ),
           ),
           IconButton(
             icon: const Icon(Icons.logout),
-            tooltip: 'Cikis Yap',
+            tooltip: 'Çıkış Yap',
             onPressed: () => ref.read(authRepositoryProvider).signOut(),
           ),
         ],
       ),
       body: profileAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Profil yuklenemedi: $e')),
+        error: (e, _) => Center(child: Text('Profil yüklenemedi: $e')),
         data: (profile) {
           if (profile == null) {
-            return const Center(child: Text('Oturum bulunamadi.'));
+            return const Center(child: Text('Oturum bulunamadı.'));
           }
           return Column(
             children: [
@@ -68,7 +68,7 @@ class _ActiveTripScreenState extends ConsumerState<ActiveTripScreen> {
 
     return activeTripAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) => Center(child: Text('Sefer bilgisi yuklenemedi: $e')),
+      error: (e, _) => Center(child: Text('Sefer bilgisi yüklenemedi: $e')),
       data: (trip) {
         if (trip == null) return _yeniSeferBaslat(profile);
         return _aktifSeferGorunumu(profile, trip);
@@ -87,31 +87,44 @@ class _ActiveTripScreenState extends ConsumerState<ActiveTripScreen> {
           const Icon(Icons.directions_car_outlined, size: 64),
           const SizedBox(height: 16),
           Text(
-            'Aktif seferiniz yok. Araci secip fabrikadan cikiyorsaniz\n'
-            '"Fabrika Cikis", dogrudan bir firmaya gidiyorsaniz\n'
-            '"Firma Giris" butonuna basin.',
+            'Aktif seferiniz yok. Aracı seçip fabrikadan çıkıyorsanız\n'
+            '"Fabrika Çıkış", doğrudan bir firmaya gidiyorsanız\n'
+            '"Firma Giriş" butonuna basın.',
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 24),
           vehiclesAsync.when(
             loading: () => const CircularProgressIndicator(),
-            error: (e, _) => Text('Araclar yuklenemedi: $e'),
-            data: (vehicles) => DropdownButtonFormField<VehiclesCacheData>(
-              initialValue: _seciliArac,
-              decoration: const InputDecoration(
-                labelText: 'Arac Plakasi',
-                border: OutlineInputBorder(),
-              ),
-              items: vehicles
-                  .map((v) => DropdownMenuItem(value: v, child: Text(v.plaka)))
-                  .toList(),
-              onChanged: (v) => setState(() => _seciliArac = v),
+            error: (e, _) => Text('Araçlar yüklenemedi: $e'),
+            data: (vehicles) => Autocomplete<VehiclesCacheData>(
+              displayStringForOption: (v) => v.plaka,
+              optionsBuilder: (value) {
+                if (value.text.isEmpty) return vehicles;
+                final q = value.text.toLowerCase();
+                return vehicles.where((v) => v.plaka.toLowerCase().contains(q));
+              },
+              onSelected: (v) => setState(() => _seciliArac = v),
+              fieldViewBuilder: (context, controller, focusNode, onSubmit) {
+                return TextFormField(
+                  controller: controller,
+                  focusNode: focusNode,
+                  decoration: const InputDecoration(
+                    labelText: 'Araç Plakası',
+                    border: OutlineInputBorder(),
+                  ),
+                  onChanged: (v) {
+                    if (_seciliArac != null && _seciliArac!.plaka != v) {
+                      setState(() => _seciliArac = null);
+                    }
+                  },
+                );
+              },
             ),
           ),
           const SizedBox(height: 24),
           FilledButton.icon(
             icon: const Icon(Icons.factory_outlined),
-            label: const Text('Fabrika Cikis'),
+            label: const Text('Fabrika Çıkış'),
             onPressed: (_seciliArac == null || _islemDevamEdiyor)
                 ? null
                 : () => _fabrikaCikisIleBaslat(profile),
@@ -119,7 +132,7 @@ class _ActiveTripScreenState extends ConsumerState<ActiveTripScreen> {
           const SizedBox(height: 12),
           OutlinedButton.icon(
             icon: const Icon(Icons.business_outlined),
-            label: const Text('Dogrudan Firma Giris'),
+            label: const Text('Doğrudan Firma Giriş'),
             onPressed: (_seciliArac == null || _islemDevamEdiyor)
                 ? null
                 : () => _firmaGirisIleBaslat(profile),
@@ -183,7 +196,7 @@ class _ActiveTripScreenState extends ConsumerState<ActiveTripScreen> {
 
     return openStopAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) => Center(child: Text('Durak bilgisi yuklenemedi: $e')),
+      error: (e, _) => Center(child: Text('Durak bilgisi yüklenemedi: $e')),
       data: (openStop) {
         return ListView(
           padding: const EdgeInsets.all(16),
@@ -197,9 +210,9 @@ class _ActiveTripScreenState extends ConsumerState<ActiveTripScreen> {
                     Text('Sefer devam ediyor', style: Theme.of(context).textTheme.titleMedium),
                     const SizedBox(height: 8),
                     if (trip.fabrikaCikisAt != null)
-                      Text('Fabrika Cikis: ${dateFormat.format(trip.fabrikaCikisAt!)}'),
+                      Text('Fabrika Çıkış: ${dateFormat.format(trip.fabrikaCikisAt!)}'),
                     if (trip.fabrikaCikisAt == null)
-                      const Text('Fabrika Cikis yapilmadi (dogrudan firmaya gidildi).'),
+                      const Text('Fabrika Çıkış yapılmadı (doğrudan firmaya gidildi).'),
                   ],
                 ),
               ),
@@ -207,7 +220,7 @@ class _ActiveTripScreenState extends ConsumerState<ActiveTripScreen> {
             const SizedBox(height: 12),
             stopsAsync.when(
               loading: () => const SizedBox.shrink(),
-              error: (e, _) => Text('Duraklar yuklenemedi: $e'),
+              error: (e, _) => Text('Duraklar yüklenemedi: $e'),
               data: (stops) => Column(
                 children: stops
                     .map((s) => Card(
@@ -219,8 +232,8 @@ class _ActiveTripScreenState extends ConsumerState<ActiveTripScreen> {
                             title: Text(s.gidilenSirketFree ?? '${s.sira}. durak'),
                             subtitle: Text(
                               s.firmaCikisAt == null
-                                  ? 'Giris: ${dateFormat.format(s.firmaGirisAt)} - hala icerde'
-                                  : 'Giris: ${dateFormat.format(s.firmaGirisAt)} - Cikis: ${dateFormat.format(s.firmaCikisAt!)}',
+                                  ? 'Giriş: ${dateFormat.format(s.firmaGirisAt)} - hâlâ içeride'
+                                  : 'Giriş: ${dateFormat.format(s.firmaGirisAt)} - Çıkış: ${dateFormat.format(s.firmaCikisAt!)}',
                             ),
                           ),
                         ))
@@ -231,18 +244,18 @@ class _ActiveTripScreenState extends ConsumerState<ActiveTripScreen> {
             if (openStop != null)
               FilledButton(
                 onPressed: _islemDevamEdiyor ? null : () => _firmaCikisYap(trip, openStop),
-                child: const Text('Firma Cikis'),
+                child: const Text('Firma Çıkış'),
               )
             else ...[
               FilledButton.icon(
                 icon: const Icon(Icons.business_outlined),
-                label: const Text('Firma Giris'),
+                label: const Text('Firma Giriş'),
                 onPressed: _islemDevamEdiyor ? null : () => _firmaGirisYap(trip),
               ),
               const SizedBox(height: 12),
               OutlinedButton.icon(
                 icon: const Icon(Icons.factory_outlined),
-                label: const Text('Fabrika Giris (Seferi Bitir)'),
+                label: const Text('Fabrika Giriş (Seferi Bitir)'),
                 onPressed: _islemDevamEdiyor ? null : () => _fabrikaGirisYap(trip),
               ),
             ],
@@ -275,6 +288,7 @@ class _ActiveTripScreenState extends ConsumerState<ActiveTripScreen> {
           gidilenSirketId: Value(sonuc.gidilenSirketId),
           gidilenSirketFree: Value(sonuc.gidilenSirketFree),
           irsaliyeNo: Value(sonuc.irsaliyeNo),
+          notlar: Value(sonuc.notlar),
           updatedLocallyAt: now,
         ));
     ref.read(syncServiceProvider).drainOutbox();
@@ -297,7 +311,9 @@ class _ActiveTripScreenState extends ConsumerState<ActiveTripScreen> {
           gidilenSirketId: Value(openStop.gidilenSirketId),
           gidilenSirketFree: Value(openStop.gidilenSirketFree),
           irsaliyeNo: Value(openStop.irsaliyeNo),
+          notlar: Value(openStop.notlar),
           firmaCikisAt: Value(now),
+          synced: const Value(false),
           updatedLocallyAt: Value(now),
         ));
     ref.read(syncServiceProvider).drainOutbox();
@@ -314,6 +330,7 @@ class _ActiveTripScreenState extends ConsumerState<ActiveTripScreen> {
           tarih: Value(trip.tarih),
           fabrikaCikisAt: Value(trip.fabrikaCikisAt),
           fabrikaGirisAt: Value(now),
+          synced: const Value(false),
           updatedLocallyAt: Value(now),
         ));
     ref.read(syncServiceProvider).drainOutbox();

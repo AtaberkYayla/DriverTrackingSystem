@@ -851,6 +851,15 @@ class $TripStopsCacheTable extends TripStopsCache
     type: DriftSqlType.dateTime,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _notlarMeta = const VerificationMeta('notlar');
+  @override
+  late final GeneratedColumn<String> notlar = GeneratedColumn<String>(
+    'notlar',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _syncedMeta = const VerificationMeta('synced');
   @override
   late final GeneratedColumn<bool> synced = GeneratedColumn<bool>(
@@ -915,6 +924,7 @@ class $TripStopsCacheTable extends TripStopsCache
     gidilenSirketFree,
     irsaliyeNo,
     firmaCikisAt,
+    notlar,
     synced,
     retryCount,
     lastError,
@@ -1054,6 +1064,12 @@ class $TripStopsCacheTable extends TripStopsCache
         ),
       );
     }
+    if (data.containsKey('notlar')) {
+      context.handle(
+        _notlarMeta,
+        notlar.isAcceptableOrUnknown(data['notlar']!, _notlarMeta),
+      );
+    }
     if (data.containsKey('synced')) {
       context.handle(
         _syncedMeta,
@@ -1148,6 +1164,10 @@ class $TripStopsCacheTable extends TripStopsCache
         DriftSqlType.dateTime,
         data['${effectivePrefix}firma_cikis_at'],
       ),
+      notlar: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}notlar'],
+      ),
       synced: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}synced'],
@@ -1189,6 +1209,7 @@ class TripStopsCacheData extends DataClass
   final String? gidilenSirketFree;
   final String? irsaliyeNo;
   final DateTime? firmaCikisAt;
+  final String? notlar;
   final bool synced;
   final int retryCount;
   final String? lastError;
@@ -1208,6 +1229,7 @@ class TripStopsCacheData extends DataClass
     this.gidilenSirketFree,
     this.irsaliyeNo,
     this.firmaCikisAt,
+    this.notlar,
     required this.synced,
     required this.retryCount,
     this.lastError,
@@ -1249,6 +1271,9 @@ class TripStopsCacheData extends DataClass
     }
     if (!nullToAbsent || firmaCikisAt != null) {
       map['firma_cikis_at'] = Variable<DateTime>(firmaCikisAt);
+    }
+    if (!nullToAbsent || notlar != null) {
+      map['notlar'] = Variable<String>(notlar);
     }
     map['synced'] = Variable<bool>(synced);
     map['retry_count'] = Variable<int>(retryCount);
@@ -1295,6 +1320,9 @@ class TripStopsCacheData extends DataClass
       firmaCikisAt: firmaCikisAt == null && nullToAbsent
           ? const Value.absent()
           : Value(firmaCikisAt),
+      notlar: notlar == null && nullToAbsent
+          ? const Value.absent()
+          : Value(notlar),
       synced: Value(synced),
       retryCount: Value(retryCount),
       lastError: lastError == null && nullToAbsent
@@ -1326,6 +1354,7 @@ class TripStopsCacheData extends DataClass
       ),
       irsaliyeNo: serializer.fromJson<String?>(json['irsaliyeNo']),
       firmaCikisAt: serializer.fromJson<DateTime?>(json['firmaCikisAt']),
+      notlar: serializer.fromJson<String?>(json['notlar']),
       synced: serializer.fromJson<bool>(json['synced']),
       retryCount: serializer.fromJson<int>(json['retryCount']),
       lastError: serializer.fromJson<String?>(json['lastError']),
@@ -1350,6 +1379,7 @@ class TripStopsCacheData extends DataClass
       'gidilenSirketFree': serializer.toJson<String?>(gidilenSirketFree),
       'irsaliyeNo': serializer.toJson<String?>(irsaliyeNo),
       'firmaCikisAt': serializer.toJson<DateTime?>(firmaCikisAt),
+      'notlar': serializer.toJson<String?>(notlar),
       'synced': serializer.toJson<bool>(synced),
       'retryCount': serializer.toJson<int>(retryCount),
       'lastError': serializer.toJson<String?>(lastError),
@@ -1372,6 +1402,7 @@ class TripStopsCacheData extends DataClass
     Value<String?> gidilenSirketFree = const Value.absent(),
     Value<String?> irsaliyeNo = const Value.absent(),
     Value<DateTime?> firmaCikisAt = const Value.absent(),
+    Value<String?> notlar = const Value.absent(),
     bool? synced,
     int? retryCount,
     Value<String?> lastError = const Value.absent(),
@@ -1395,6 +1426,7 @@ class TripStopsCacheData extends DataClass
         : this.gidilenSirketFree,
     irsaliyeNo: irsaliyeNo.present ? irsaliyeNo.value : this.irsaliyeNo,
     firmaCikisAt: firmaCikisAt.present ? firmaCikisAt.value : this.firmaCikisAt,
+    notlar: notlar.present ? notlar.value : this.notlar,
     synced: synced ?? this.synced,
     retryCount: retryCount ?? this.retryCount,
     lastError: lastError.present ? lastError.value : this.lastError,
@@ -1438,6 +1470,7 @@ class TripStopsCacheData extends DataClass
       firmaCikisAt: data.firmaCikisAt.present
           ? data.firmaCikisAt.value
           : this.firmaCikisAt,
+      notlar: data.notlar.present ? data.notlar.value : this.notlar,
       synced: data.synced.present ? data.synced.value : this.synced,
       retryCount: data.retryCount.present
           ? data.retryCount.value
@@ -1466,6 +1499,7 @@ class TripStopsCacheData extends DataClass
           ..write('gidilenSirketFree: $gidilenSirketFree, ')
           ..write('irsaliyeNo: $irsaliyeNo, ')
           ..write('firmaCikisAt: $firmaCikisAt, ')
+          ..write('notlar: $notlar, ')
           ..write('synced: $synced, ')
           ..write('retryCount: $retryCount, ')
           ..write('lastError: $lastError, ')
@@ -1490,6 +1524,7 @@ class TripStopsCacheData extends DataClass
     gidilenSirketFree,
     irsaliyeNo,
     firmaCikisAt,
+    notlar,
     synced,
     retryCount,
     lastError,
@@ -1513,6 +1548,7 @@ class TripStopsCacheData extends DataClass
           other.gidilenSirketFree == this.gidilenSirketFree &&
           other.irsaliyeNo == this.irsaliyeNo &&
           other.firmaCikisAt == this.firmaCikisAt &&
+          other.notlar == this.notlar &&
           other.synced == this.synced &&
           other.retryCount == this.retryCount &&
           other.lastError == this.lastError &&
@@ -1534,6 +1570,7 @@ class TripStopsCacheCompanion extends UpdateCompanion<TripStopsCacheData> {
   final Value<String?> gidilenSirketFree;
   final Value<String?> irsaliyeNo;
   final Value<DateTime?> firmaCikisAt;
+  final Value<String?> notlar;
   final Value<bool> synced;
   final Value<int> retryCount;
   final Value<String?> lastError;
@@ -1554,6 +1591,7 @@ class TripStopsCacheCompanion extends UpdateCompanion<TripStopsCacheData> {
     this.gidilenSirketFree = const Value.absent(),
     this.irsaliyeNo = const Value.absent(),
     this.firmaCikisAt = const Value.absent(),
+    this.notlar = const Value.absent(),
     this.synced = const Value.absent(),
     this.retryCount = const Value.absent(),
     this.lastError = const Value.absent(),
@@ -1575,6 +1613,7 @@ class TripStopsCacheCompanion extends UpdateCompanion<TripStopsCacheData> {
     this.gidilenSirketFree = const Value.absent(),
     this.irsaliyeNo = const Value.absent(),
     this.firmaCikisAt = const Value.absent(),
+    this.notlar = const Value.absent(),
     this.synced = const Value.absent(),
     this.retryCount = const Value.absent(),
     this.lastError = const Value.absent(),
@@ -1600,6 +1639,7 @@ class TripStopsCacheCompanion extends UpdateCompanion<TripStopsCacheData> {
     Expression<String>? gidilenSirketFree,
     Expression<String>? irsaliyeNo,
     Expression<DateTime>? firmaCikisAt,
+    Expression<String>? notlar,
     Expression<bool>? synced,
     Expression<int>? retryCount,
     Expression<String>? lastError,
@@ -1621,6 +1661,7 @@ class TripStopsCacheCompanion extends UpdateCompanion<TripStopsCacheData> {
       if (gidilenSirketFree != null) 'gidilen_sirket_free': gidilenSirketFree,
       if (irsaliyeNo != null) 'irsaliye_no': irsaliyeNo,
       if (firmaCikisAt != null) 'firma_cikis_at': firmaCikisAt,
+      if (notlar != null) 'notlar': notlar,
       if (synced != null) 'synced': synced,
       if (retryCount != null) 'retry_count': retryCount,
       if (lastError != null) 'last_error': lastError,
@@ -1644,6 +1685,7 @@ class TripStopsCacheCompanion extends UpdateCompanion<TripStopsCacheData> {
     Value<String?>? gidilenSirketFree,
     Value<String?>? irsaliyeNo,
     Value<DateTime?>? firmaCikisAt,
+    Value<String?>? notlar,
     Value<bool>? synced,
     Value<int>? retryCount,
     Value<String?>? lastError,
@@ -1665,6 +1707,7 @@ class TripStopsCacheCompanion extends UpdateCompanion<TripStopsCacheData> {
       gidilenSirketFree: gidilenSirketFree ?? this.gidilenSirketFree,
       irsaliyeNo: irsaliyeNo ?? this.irsaliyeNo,
       firmaCikisAt: firmaCikisAt ?? this.firmaCikisAt,
+      notlar: notlar ?? this.notlar,
       synced: synced ?? this.synced,
       retryCount: retryCount ?? this.retryCount,
       lastError: lastError ?? this.lastError,
@@ -1718,6 +1761,9 @@ class TripStopsCacheCompanion extends UpdateCompanion<TripStopsCacheData> {
     if (firmaCikisAt.present) {
       map['firma_cikis_at'] = Variable<DateTime>(firmaCikisAt.value);
     }
+    if (notlar.present) {
+      map['notlar'] = Variable<String>(notlar.value);
+    }
     if (synced.present) {
       map['synced'] = Variable<bool>(synced.value);
     }
@@ -1753,6 +1799,7 @@ class TripStopsCacheCompanion extends UpdateCompanion<TripStopsCacheData> {
           ..write('gidilenSirketFree: $gidilenSirketFree, ')
           ..write('irsaliyeNo: $irsaliyeNo, ')
           ..write('firmaCikisAt: $firmaCikisAt, ')
+          ..write('notlar: $notlar, ')
           ..write('synced: $synced, ')
           ..write('retryCount: $retryCount, ')
           ..write('lastError: $lastError, ')
@@ -3413,6 +3460,7 @@ typedef $$TripStopsCacheTableCreateCompanionBuilder =
       Value<String?> gidilenSirketFree,
       Value<String?> irsaliyeNo,
       Value<DateTime?> firmaCikisAt,
+      Value<String?> notlar,
       Value<bool> synced,
       Value<int> retryCount,
       Value<String?> lastError,
@@ -3435,6 +3483,7 @@ typedef $$TripStopsCacheTableUpdateCompanionBuilder =
       Value<String?> gidilenSirketFree,
       Value<String?> irsaliyeNo,
       Value<DateTime?> firmaCikisAt,
+      Value<String?> notlar,
       Value<bool> synced,
       Value<int> retryCount,
       Value<String?> lastError,
@@ -3518,6 +3567,11 @@ class $$TripStopsCacheTableFilterComposer
 
   ColumnFilters<DateTime> get firmaCikisAt => $composableBuilder(
     column: $table.firmaCikisAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get notlar => $composableBuilder(
+    column: $table.notlar,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -3621,6 +3675,11 @@ class $$TripStopsCacheTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get notlar => $composableBuilder(
+    column: $table.notlar,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<bool> get synced => $composableBuilder(
     column: $table.synced,
     builder: (column) => ColumnOrderings(column),
@@ -3715,6 +3774,9 @@ class $$TripStopsCacheTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<String> get notlar =>
+      $composableBuilder(column: $table.notlar, builder: (column) => column);
+
   GeneratedColumn<bool> get synced =>
       $composableBuilder(column: $table.synced, builder: (column) => column);
 
@@ -3783,6 +3845,7 @@ class $$TripStopsCacheTableTableManager
                 Value<String?> gidilenSirketFree = const Value.absent(),
                 Value<String?> irsaliyeNo = const Value.absent(),
                 Value<DateTime?> firmaCikisAt = const Value.absent(),
+                Value<String?> notlar = const Value.absent(),
                 Value<bool> synced = const Value.absent(),
                 Value<int> retryCount = const Value.absent(),
                 Value<String?> lastError = const Value.absent(),
@@ -3803,6 +3866,7 @@ class $$TripStopsCacheTableTableManager
                 gidilenSirketFree: gidilenSirketFree,
                 irsaliyeNo: irsaliyeNo,
                 firmaCikisAt: firmaCikisAt,
+                notlar: notlar,
                 synced: synced,
                 retryCount: retryCount,
                 lastError: lastError,
@@ -3825,6 +3889,7 @@ class $$TripStopsCacheTableTableManager
                 Value<String?> gidilenSirketFree = const Value.absent(),
                 Value<String?> irsaliyeNo = const Value.absent(),
                 Value<DateTime?> firmaCikisAt = const Value.absent(),
+                Value<String?> notlar = const Value.absent(),
                 Value<bool> synced = const Value.absent(),
                 Value<int> retryCount = const Value.absent(),
                 Value<String?> lastError = const Value.absent(),
@@ -3845,6 +3910,7 @@ class $$TripStopsCacheTableTableManager
                 gidilenSirketFree: gidilenSirketFree,
                 irsaliyeNo: irsaliyeNo,
                 firmaCikisAt: firmaCikisAt,
+                notlar: notlar,
                 synced: synced,
                 retryCount: retryCount,
                 lastError: lastError,

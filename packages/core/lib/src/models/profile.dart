@@ -12,6 +12,8 @@ class Profile {
     required this.role,
     this.phone,
     this.aktif = true,
+    this.notificationEmail,
+    this.emailBildirimAktif = true,
   });
 
   final String id;
@@ -19,6 +21,14 @@ class Profile {
   final AppRole role;
   final String? phone;
   final bool aktif;
+
+  /// Gerçek bildirim e-postası (giriş için kullanılan sahte @dedemmekatronik.com
+  /// adresinden farklı) — kullanıcı kendi profilinden girer.
+  final String? notificationEmail;
+
+  /// Yönetici/admin'in kendi profilinden açıp kapatabileceği "yeni durak
+  /// bildirimlerini e-posta ile al" tercihi.
+  final bool emailBildirimAktif;
 
   factory Profile.fromJson(Map<String, dynamic> json) => _$ProfileFromJson(json);
 

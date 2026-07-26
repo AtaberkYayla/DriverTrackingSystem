@@ -53,4 +53,29 @@ class AuthRepository {
     if (row == null) return null;
     return Profile.fromJson(row);
   }
+
+  /// Kullanicinin kendi profilini (ad, bildirim e-postasi, bildirim tercihi)
+  /// guncellemesi icin. RLS zaten `id = auth.uid()` oldugunda izin veriyor,
+  /// bu yuzden herhangi bir admin RPC'sine ihtiyac yok.
+  Future<void> updateOwnProfile({
+    String? fullName,
+    String? notificationEmail,
+    bool? emailBildirimAktif,
+  }) async {
+    final userId = currentSession?.user.id;
+    if (userId == null) return;
+    final payload = <String, dynamic>{
+      if (fullName != null) 'full_name': fullName,
+      if (notificationEmail != null) 'notification_email': notificationEmail,
+      if (emailBildirimAktif != null) 'email_bildirim_aktif': emailBildirimAktif,
+    };
+    if (payload.isEmpty) return;
+    await supabase.from('profiles').update(payload).eq('id', userId);
+  }
+
+  /// Kullanicinin kendi sifresini degistirmesi icin (kendi oturumuyla,
+  /// admin RPC'sine gerek yok - Supabase Auth'un kendi client metodu).
+  Future<void> updatePassword(String yeniSifre) async {
+    await supabase.auth.updateUser(UserAttributes(password: yeniSifre));
+  }
 }

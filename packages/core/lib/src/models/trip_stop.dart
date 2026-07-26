@@ -56,7 +56,40 @@ class TripStop {
 
   bool get acikMi => firmaCikisAt == null;
 
-  factory TripStop.fromJson(Map<String, dynamic> json) => _$TripStopFromJson(json);
+  // `_$TripStopFromJson` decode edilmiyor: json_serializable enum alanlarini
+  // Dart uye adiyla ('beklemede') cozer, ama DB'deki onay_durumu/sefer_durumu
+  // degerleri buyuk harfli DB kodlaridir ('BEKLEMEDE') ve OnayDurumu.fromJson /
+  // SeferDurumu.fromJson'a ihtiyac duyar; aksi halde sunucudan gelen her satirda
+  // "is not one of the supported values" hatasi alinir.
+  factory TripStop.fromJson(Map<String, dynamic> json) => TripStop(
+        id: json['id'] as String,
+        clientStopId: json['client_stop_id'] as String,
+        tripId: json['trip_id'] as String,
+        sira: (json['sira'] as num).toInt(),
+        firmaGirisAt: DateTime.parse(json['firma_giris_at'] as String),
+        tripTypeId: json['trip_type_id'] as String?,
+        requesterId: json['requester_id'] as String?,
+        cikisNedeni: json['cikis_nedeni'] as String?,
+        gidilenIl: json['gidilen_il'] as String?,
+        gidilenIlce: json['gidilen_ilce'] as String?,
+        gidilenSirketId: json['gidilen_sirket_id'] as String?,
+        gidilenSirketFree: json['gidilen_sirket_free'] as String?,
+        irsaliyeNo: json['irsaliye_no'] as String?,
+        firmaCikisAt: json['firma_cikis_at'] == null
+            ? null
+            : DateTime.parse(json['firma_cikis_at'] as String),
+        onayDurumu: json['onay_durumu'] == null
+            ? OnayDurumu.beklemede
+            : OnayDurumu.fromJson(json['onay_durumu'] as String),
+        onaylayanId: json['onaylayan_id'] as String?,
+        onaylandiAt: json['onaylandi_at'] == null
+            ? null
+            : DateTime.parse(json['onaylandi_at'] as String),
+        seferDurumu: json['sefer_durumu'] == null
+            ? SeferDurumu.devamEdiyor
+            : SeferDurumu.fromJson(json['sefer_durumu'] as String),
+        notlar: json['notlar'] as String?,
+      );
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{
@@ -88,6 +121,16 @@ class TripStop {
   }
 
   TripStop copyWith({
+    int? sira,
+    DateTime? firmaGirisAt,
+    String? tripTypeId,
+    String? requesterId,
+    String? cikisNedeni,
+    String? gidilenIl,
+    String? gidilenIlce,
+    String? gidilenSirketId,
+    String? gidilenSirketFree,
+    String? irsaliyeNo,
     DateTime? firmaCikisAt,
     OnayDurumu? onayDurumu,
     String? onaylayanId,
@@ -99,16 +142,16 @@ class TripStop {
       id: id,
       clientStopId: clientStopId,
       tripId: tripId,
-      sira: sira,
-      firmaGirisAt: firmaGirisAt,
-      tripTypeId: tripTypeId,
-      requesterId: requesterId,
-      cikisNedeni: cikisNedeni,
-      gidilenIl: gidilenIl,
-      gidilenIlce: gidilenIlce,
-      gidilenSirketId: gidilenSirketId,
-      gidilenSirketFree: gidilenSirketFree,
-      irsaliyeNo: irsaliyeNo,
+      sira: sira ?? this.sira,
+      firmaGirisAt: firmaGirisAt ?? this.firmaGirisAt,
+      tripTypeId: tripTypeId ?? this.tripTypeId,
+      requesterId: requesterId ?? this.requesterId,
+      cikisNedeni: cikisNedeni ?? this.cikisNedeni,
+      gidilenIl: gidilenIl ?? this.gidilenIl,
+      gidilenIlce: gidilenIlce ?? this.gidilenIlce,
+      gidilenSirketId: gidilenSirketId ?? this.gidilenSirketId,
+      gidilenSirketFree: gidilenSirketFree ?? this.gidilenSirketFree,
+      irsaliyeNo: irsaliyeNo ?? this.irsaliyeNo,
       firmaCikisAt: firmaCikisAt ?? this.firmaCikisAt,
       onayDurumu: onayDurumu ?? this.onayDurumu,
       onaylayanId: onaylayanId ?? this.onaylayanId,

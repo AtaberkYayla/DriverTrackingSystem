@@ -10,6 +10,8 @@ final tripRepositoryProvider = Provider<TripRepository>((ref) => TripRepository(
 final masterDataRepositoryProvider =
     Provider<MasterDataRepository>((ref) => MasterDataRepository());
 
+final accountRepositoryProvider = Provider<AccountRepository>((ref) => AccountRepository());
+
 final authStateChangesProvider = StreamProvider<AuthState>((ref) {
   return ref.watch(authRepositoryProvider).onAuthStateChange;
 });
@@ -17,6 +19,24 @@ final authStateChangesProvider = StreamProvider<AuthState>((ref) {
 final currentProfileProvider = FutureProvider<Profile?>((ref) async {
   ref.watch(authStateChangesProvider);
   return ref.watch(authRepositoryProvider).fetchCurrentProfile();
+});
+
+/// Yonetici veya admin mi? Kullanici yonetimi, master data duzenleme/silme
+/// ve sefer duzeltme/silme gibi islemler bu role gore acilir/kapanir.
+final isManagerOrAdminProvider = Provider<bool>((ref) {
+  final profile = ref.watch(currentProfileProvider).value;
+  return profile != null && (profile.role == AppRole.manager || profile.role == AppRole.admin);
+});
+
+/// Sistem admini mi? Sadece admin baska yonetici/admin hesabi olusturup
+/// duzenleyebilir.
+final isAdminProvider = Provider<bool>((ref) {
+  final profile = ref.watch(currentProfileProvider).value;
+  return profile?.role == AppRole.admin;
+});
+
+final accountsProvider = FutureProvider<List<Account>>((ref) {
+  return ref.watch(accountRepositoryProvider).listAccounts();
 });
 
 final vehiclesProvider = FutureProvider<List<Vehicle>>((ref) {
@@ -29,10 +49,6 @@ final tripTypesProvider = FutureProvider<List<TripType>>((ref) {
 
 final requestersProvider = FutureProvider<List<Requester>>((ref) {
   return ref.watch(masterDataRepositoryProvider).fetchRequesters(sadeceAktif: false);
-});
-
-final managersProvider = FutureProvider<List<Manager>>((ref) {
-  return ref.watch(masterDataRepositoryProvider).fetchManagers(sadeceAktif: false);
 });
 
 final companiesProvider = FutureProvider<List<Company>>((ref) {
@@ -83,7 +99,14 @@ class TripFilters {
 
 final tripFiltersProvider = StateProvider<TripFilters>((ref) => const TripFilters());
 
+/// Ekran acikken 10 saniyede bir tikleyip sefer listesini ve referans
+/// veriyi otomatik tazeler; manuel yenile butonuna gerek birakmaz.
+final autoRefreshTickProvider = StreamProvider.autoDispose<int>((ref) {
+  return Stream.periodic(const Duration(seconds: 10), (i) => i);
+});
+
 final tripListProvider = FutureProvider.autoDispose<List<TripStopWithTrip>>((ref) {
+  ref.watch(autoRefreshTickProvider);
   final filters = ref.watch(tripFiltersProvider);
   return ref.watch(tripRepositoryProvider).fetchAllStopsWithTrip(
         driverId: filters.driverId,
@@ -125,6 +148,7 @@ class ReferenceData {
 }
 
 final referenceDataProvider = FutureProvider<ReferenceData>((ref) async {
+  ref.watch(autoRefreshTickProvider);
   final drivers = await ref.watch(allDriversProvider.future);
   final vehicles = await ref.watch(vehiclesProvider.future);
   final tripTypes = await ref.watch(tripTypesProvider.future);

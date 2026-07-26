@@ -40,10 +40,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       final profile = await auth.fetchCurrentProfile();
       if (profile == null || profile.role == AppRole.driver) {
         await auth.signOut();
-        setState(() => _hata = 'Bu hesap yonetim paneli icin yetkili degil.');
+        setState(() => _hata = 'Bu hesap yönetim paneli için yetkili değil.');
+      } else if (!profile.aktif) {
+        await auth.signOut();
+        setState(() => _hata = 'Bu hesap devre dışı bırakılmış.');
       }
     } catch (e) {
-      setState(() => _hata = 'Giris basarisiz. E-posta veya sifre hatali.');
+      setState(() => _hata = 'Giriş başarısız. E-posta veya şifre hatalı.');
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -66,7 +69,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   const Icon(Icons.admin_panel_settings_outlined, size: 64),
                   const SizedBox(height: 12),
                   Text(
-                    'Dedem Mekatronik\nSofor Takip - Yonetim Paneli',
+                    'Dedem Mekatronik\nŞoför Takip - Yönetim Paneli',
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.headlineSmall,
                   ),
@@ -86,13 +89,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   TextFormField(
                     controller: _passwordController,
                     decoration: const InputDecoration(
-                      labelText: 'Sifre',
+                      labelText: 'Şifre',
                       prefixIcon: Icon(Icons.lock_outline),
                       border: OutlineInputBorder(),
                     ),
                     obscureText: true,
                     onFieldSubmitted: (_) => _girisYap(),
-                    validator: (v) => (v == null || v.isEmpty) ? 'Sifre giriniz' : null,
+                    validator: (v) => (v == null || v.isEmpty) ? 'Şifre giriniz' : null,
                   ),
                   if (_hata != null) ...[
                     const SizedBox(height: 12),
@@ -107,7 +110,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             height: 20,
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
-                        : const Text('Giris Yap'),
+                        : const Text('Giriş Yap'),
                   ),
                 ],
               ),

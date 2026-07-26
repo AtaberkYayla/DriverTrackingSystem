@@ -63,8 +63,8 @@ final openStopProvider = StreamProvider.family<TripStopsCacheData?, String>((ref
 });
 
 final stopsForTripProvider =
-    FutureProvider.family<List<TripStopsCacheData>, String>((ref, clientTripId) {
-  return ref.watch(localStoreProvider).duraklarGetir(clientTripId);
+    StreamProvider.family<List<TripStopsCacheData>, String>((ref, clientTripId) {
+  return ref.watch(localStoreProvider).duraklariIzle(clientTripId);
 });
 
 /// Uygulama acilista/oturum sonrasi master veriyi (araclar, sefer turleri,

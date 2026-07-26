@@ -51,7 +51,7 @@ class AdminWebApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Sofor Takip - Yonetim Paneli',
+      title: 'Şoför Takip - Yönetim Paneli',
       debugShowCheckedModeBanner: false,
       locale: const Locale('tr'),
       supportedLocales: const [Locale('tr')],
@@ -85,7 +85,7 @@ class _AuthGate extends ConsumerWidget {
       loading: () => const Scaffold(body: Center(child: CircularProgressIndicator())),
       error: (e, _) => const LoginScreen(),
       data: (profile) {
-        if (profile == null || profile.role == AppRole.driver) {
+        if (profile == null || profile.role == AppRole.driver || !profile.aktif) {
           return const LoginScreen();
         }
         return const TripListScreen();

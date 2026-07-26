@@ -6,9 +6,11 @@ import '../supabase/supabase_config.dart';
 /// Bir sefer durumu (trip_stop) ve ait oldugu sefer oturumu (trip) birlikte.
 /// Yonetim panelinde Excel'deki gibi duz bir liste gostermek icin kullanilir.
 class TripStopWithTrip {
-  const TripStopWithTrip({required this.stop, required this.trip});
+  const TripStopWithTrip({required this.trip, this.stop});
 
-  final TripStop stop;
+  /// Sefer henuz hicbir firmaya ugramadiysa (orn. sadece Fabrika Cikis
+  /// yapildiysa) durak kaydi olmadigindan null olabilir.
+  final TripStop? stop;
   final Trip trip;
 }
 
@@ -83,6 +85,11 @@ class TripRepository {
   /// firma ziyareti (trip_stop), ait oldugu seferin (trip) bilgileriyle
   /// birlikte. onay/sefer durumu sunucuda, sofor/arac/tarih istemci
   /// tarafinda filtrelenir (kucuk veri hacmi icin yeterli).
+  ///
+  /// Sorgu 'trips' tablosundan baslar (trip_stops!inner degil) ki henuz
+  /// hicbir firmaya ugramamis (durak kaydi olmayan) aktif seferler de
+  /// listede gorunsun; sadece onay/sefer durumu filtrelendiginde (bu
+  /// alanlar durak bazinda oldugundan) durak zorunlu hale gelir.
   Future<List<TripStopWithTrip>> fetchAllStopsWithTrip({
     String? driverId,
     String? vehicleId,
@@ -92,17 +99,31 @@ class TripRepository {
     DateTime? bitis,
     int limit = 500,
   }) async {
-    var query = supabase.from('trip_stops').select('*, trips!inner(*)');
-    if (onayDurumu != null) query = query.eq('onay_durumu', onayDurumu.toJson());
-    if (seferDurumu != null) query = query.eq('sefer_durumu', seferDurumu.toJson());
+    final stopFiltresiVar = onayDurumu != null || seferDurumu != null;
+    final duraklarSecimi = stopFiltresiVar ? 'trip_stops!inner(*)' : 'trip_stops(*)';
+    var query = supabase.from('trips').select('*, $duraklarSecimi');
+    if (onayDurumu != null) {
+      query = query.eq('trip_stops.onay_durumu', onayDurumu.toJson());
+    }
+    if (seferDurumu != null) {
+      query = query.eq('trip_stops.sefer_durumu', seferDurumu.toJson());
+    }
 
-    final rows = await query.order('firma_giris_at', ascending: false).limit(limit);
+    final rows = await query.order('created_at', ascending: false).limit(limit);
 
-    final results = rows.map((row) {
-      final tripJson = Map<String, dynamic>.from(row['trips'] as Map<String, dynamic>);
-      final stopJson = Map<String, dynamic>.from(row)..remove('trips');
-      return TripStopWithTrip(stop: TripStop.fromJson(stopJson), trip: Trip.fromJson(tripJson));
-    }).toList();
+    final results = <TripStopWithTrip>[];
+    for (final row in rows) {
+      final tripJson = Map<String, dynamic>.from(row)..remove('trip_stops');
+      final trip = Trip.fromJson(tripJson);
+      final stopRows = (row['trip_stops'] as List).cast<Map<String, dynamic>>();
+      if (stopRows.isEmpty) {
+        results.add(TripStopWithTrip(trip: trip));
+      } else {
+        for (final stopJson in stopRows) {
+          results.add(TripStopWithTrip(trip: trip, stop: TripStop.fromJson(stopJson)));
+        }
+      }
+    }
 
     return results.where((r) {
       if (driverId != null && r.trip.driverId != driverId) return false;
@@ -134,6 +155,49 @@ class TripRepository {
         .select()
         .single();
     return TripStop.fromJson(row);
+  }
+
+  /// Soforden gelen sefer/durak detaylarini duzeltir (yalnizca yonetici/admin
+  /// icin acik; RLS + trigger bunu zorunlu kilar, bkz. migration_002).
+  Future<TripStop> updateTripStopDetails(TripStop stop) async {
+    final payload = stop.toJson()
+      ..remove('client_stop_id')
+      ..remove('trip_id')
+      ..remove('id');
+    final row = await supabase
+        .from('trip_stops')
+        .update(payload)
+        .eq('id', stop.id)
+        .select()
+        .single();
+    return TripStop.fromJson(row);
+  }
+
+  /// Sefer (trip) seviyesindeki alanlari (arac, tarih, fabrika cikis/giris)
+  /// duzeltir (yalnizca yonetici/admin icin acik).
+  Future<Trip> updateTrip(Trip trip) async {
+    final payload = trip.toJson()
+      ..remove('client_trip_id')
+      ..remove('id');
+    final row = await supabase
+        .from('trips')
+        .update(payload)
+        .eq('id', trip.id)
+        .select()
+        .single();
+    return Trip.fromJson(row);
+  }
+
+  /// Yanlislikla olusturulmus/mukerrer bir seferi tamamen siler (durak
+  /// kayitlari cascade ile birlikte gider). Yalnizca yonetici/admin icin acik.
+  Future<void> deleteTrip(String id) async {
+    await supabase.from('trips').delete().eq('id', id);
+  }
+
+  /// Yanlislikla olusturulmus/mukerrer bir duragi tamamen siler. Yalnizca
+  /// yonetici/admin icin acik.
+  Future<void> deleteTripStop(String id) async {
+    await supabase.from('trip_stops').delete().eq('id', id);
   }
 
   String _dateStr(DateTime date) => date.toIso8601String().substring(0, 10);

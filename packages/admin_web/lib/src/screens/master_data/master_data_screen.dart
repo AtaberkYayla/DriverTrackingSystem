@@ -1,6 +1,7 @@
 import 'package:core/core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException;
 import 'package:uuid/uuid.dart';
 
 import '../../providers/app_providers.dart';
@@ -13,27 +14,59 @@ class MasterDataScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 5,
+      length: 4,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Master Veri Yonetimi'),
+          title: const Text('Master Veri Yönetimi'),
           bottom: const TabBar(tabs: [
-            Tab(text: 'Araclar'),
-            Tab(text: 'Seyahat Turleri'),
+            Tab(text: 'Araçlar'),
+            Tab(text: 'Seyahat Türleri'),
             Tab(text: 'Talep Edenler'),
-            Tab(text: 'Yoneticiler'),
-            Tab(text: 'Sirketler'),
+            Tab(text: 'Şirketler'),
           ]),
         ),
         body: const TabBarView(children: [
           _VehiclesTab(),
           _TripTypesTab(),
           _RequestersTab(),
-          _ManagersTab(),
           _CompaniesTab(),
         ]),
       ),
     );
+  }
+}
+
+/// Bir kaydi siler; baska bir seferde kullanildigi icin FK ihlali alinirsa
+/// kullaniciya "pasife alin" onerisiyle anlasilir bir mesaj gosterir.
+Future<void> _sil(
+  BuildContext context,
+  WidgetRef ref, {
+  required String baslik,
+  required Future<void> Function() sil,
+  required void Function() sonrasindaGuncelle,
+}) async {
+  final onayVerildi = await showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: Text(baslik),
+      content: const Text('Bu kaydı tamamen silmek istediğinize emin misiniz?'),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('İptal')),
+        FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Sil')),
+      ],
+    ),
+  );
+  if (onayVerildi != true) return;
+
+  try {
+    await sil();
+    sonrasindaGuncelle();
+  } on PostgrestException catch (e) {
+    if (!context.mounted) return;
+    final mesaj = e.code == '23503'
+        ? 'Bu kayıt seferlerde kullanıldığı için silinemez. Pasife alabilirsiniz.'
+        : 'Silinemedi: ${e.message}';
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(mesaj)));
   }
 }
 
@@ -43,6 +76,7 @@ class _VehiclesTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final vehiclesAsync = ref.watch(vehiclesProvider);
+    final duzenlenebilir = ref.watch(isManagerOrAdminProvider);
     return vehiclesAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (e, _) => Center(child: Text('Hata: $e')),
@@ -52,23 +86,44 @@ class _VehiclesTab extends ConsumerWidget {
               .map((v) => ListTile(
                     title: Text(v.plaka),
                     subtitle: Text(v.aciklama ?? ''),
-                    trailing: Switch(
-                      value: v.aktif,
-                      onChanged: (val) async {
-                        await ref.read(masterDataRepositoryProvider).upsertVehicle(
-                              Vehicle(id: v.id, plaka: v.plaka, aciklama: v.aciklama, aktif: val),
-                            );
-                        ref.invalidate(vehiclesProvider);
-                      },
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Switch(
+                          value: v.aktif,
+                          onChanged: !duzenlenebilir
+                              ? null
+                              : (val) async {
+                                  await ref.read(masterDataRepositoryProvider).upsertVehicle(
+                                        Vehicle(
+                                            id: v.id, plaka: v.plaka, aciklama: v.aciklama, aktif: val),
+                                      );
+                                  ref.invalidate(vehiclesProvider);
+                                },
+                        ),
+                        if (duzenlenebilir)
+                          IconButton(
+                            icon: const Icon(Icons.delete_outline),
+                            onPressed: () => _sil(
+                              context,
+                              ref,
+                              baslik: 'Aracı Sil',
+                              sil: () => ref.read(masterDataRepositoryProvider).deleteVehicle(v.id),
+                              sonrasindaGuncelle: () => ref.invalidate(vehiclesProvider),
+                            ),
+                          ),
+                      ],
                     ),
-                    onTap: () => _dialog(context, ref, v),
+                    onTap: duzenlenebilir ? () => _dialog(context, ref, v) : null,
                   ))
               .toList(),
         ),
-        floatingActionButton: FloatingActionButton(
-          onPressed: () => _dialog(context, ref, null),
-          child: const Icon(Icons.add),
-        ),
+        floatingActionButton: !duzenlenebilir
+            ? null
+            : FloatingActionButton(
+                onPressed: () => _dialog(context, ref, null),
+                child: const Icon(Icons.add),
+              ),
       ),
     );
   }
@@ -79,7 +134,7 @@ class _VehiclesTab extends ConsumerWidget {
     final kaydet = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(vehicle == null ? 'Yeni Arac' : 'Araci Duzenle'),
+        title: Text(vehicle == null ? 'Yeni Araç' : 'Aracı Düzenle'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -89,12 +144,12 @@ class _VehiclesTab extends ConsumerWidget {
             ),
             TextField(
               controller: aciklamaController,
-              decoration: const InputDecoration(labelText: 'Aciklama'),
+              decoration: const InputDecoration(labelText: 'Açıklama'),
             ),
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Iptal')),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('İptal')),
           FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Kaydet')),
         ],
       ),
@@ -116,6 +171,7 @@ class _TripTypesTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final tripTypesAsync = ref.watch(tripTypesProvider);
+    final duzenlenebilir = ref.watch(isManagerOrAdminProvider);
     return tripTypesAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (e, _) => Center(child: Text('Hata: $e')),
@@ -124,29 +180,49 @@ class _TripTypesTab extends ConsumerWidget {
           children: tripTypes
               .map((t) => ListTile(
                     title: Text(t.label),
-                    subtitle: Text(t.requiresIrsaliye ? 'Irsaliye No zorunlu' : 'Irsaliye No istenmez'),
-                    trailing: Switch(
-                      value: t.aktif,
-                      onChanged: (val) async {
-                        await ref.read(masterDataRepositoryProvider).upsertTripType(TripType(
-                              id: t.id,
-                              code: t.code,
-                              label: t.label,
-                              requiresIrsaliye: t.requiresIrsaliye,
-                              sira: t.sira,
-                              aktif: val,
-                            ));
-                        ref.invalidate(tripTypesProvider);
-                      },
+                    subtitle: Text(t.requiresIrsaliye ? 'İrsaliye No zorunlu' : 'İrsaliye No istenmez'),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Switch(
+                          value: t.aktif,
+                          onChanged: !duzenlenebilir
+                              ? null
+                              : (val) async {
+                                  await ref.read(masterDataRepositoryProvider).upsertTripType(TripType(
+                                        id: t.id,
+                                        code: t.code,
+                                        label: t.label,
+                                        requiresIrsaliye: t.requiresIrsaliye,
+                                        sira: t.sira,
+                                        aktif: val,
+                                      ));
+                                  ref.invalidate(tripTypesProvider);
+                                },
+                        ),
+                        if (duzenlenebilir)
+                          IconButton(
+                            icon: const Icon(Icons.delete_outline),
+                            onPressed: () => _sil(
+                              context,
+                              ref,
+                              baslik: 'Seyahat Türünü Sil',
+                              sil: () => ref.read(masterDataRepositoryProvider).deleteTripType(t.id),
+                              sonrasindaGuncelle: () => ref.invalidate(tripTypesProvider),
+                            ),
+                          ),
+                      ],
                     ),
-                    onTap: () => _dialog(context, ref, t),
+                    onTap: duzenlenebilir ? () => _dialog(context, ref, t) : null,
                   ))
               .toList(),
         ),
-        floatingActionButton: FloatingActionButton(
-          onPressed: () => _dialog(context, ref, null),
-          child: const Icon(Icons.add),
-        ),
+        floatingActionButton: !duzenlenebilir
+            ? null
+            : FloatingActionButton(
+                onPressed: () => _dialog(context, ref, null),
+                child: const Icon(Icons.add),
+              ),
       ),
     );
   }
@@ -159,20 +235,20 @@ class _TripTypesTab extends ConsumerWidget {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setState) => AlertDialog(
-          title: Text(tripType == null ? 'Yeni Seyahat Turu' : 'Seyahat Turunu Duzenle'),
+          title: Text(tripType == null ? 'Yeni Seyahat Türü' : 'Seyahat Türünü Düzenle'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(
                 controller: labelController,
-                decoration: const InputDecoration(labelText: 'Ad (ör. Satin Alma Sevkiyati)'),
+                decoration: const InputDecoration(labelText: 'Ad (ör. Satın Alma Sevkiyatı)'),
               ),
               TextField(
                 controller: codeController,
                 decoration: const InputDecoration(labelText: 'Kod (ör. SATIN_ALMA_SEVKIYATI)'),
               ),
               SwitchListTile(
-                title: const Text('Irsaliye No zorunlu'),
+                title: const Text('İrsaliye No zorunlu'),
                 value: irsaliyeGerekli,
                 onChanged: (v) => setState(() => irsaliyeGerekli = v),
               ),
@@ -180,7 +256,7 @@ class _TripTypesTab extends ConsumerWidget {
           ),
           actions: [
             TextButton(
-                onPressed: () => Navigator.pop(context, false), child: const Text('Iptal')),
+                onPressed: () => Navigator.pop(context, false), child: const Text('İptal')),
             FilledButton(
                 onPressed: () => Navigator.pop(context, true), child: const Text('Kaydet')),
           ],
@@ -208,6 +284,7 @@ class _RequestersTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final requestersAsync = ref.watch(requestersProvider);
+    final duzenlenebilir = ref.watch(isManagerOrAdminProvider);
     return requestersAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (e, _) => Center(child: Text('Hata: $e')),
@@ -216,79 +293,62 @@ class _RequestersTab extends ConsumerWidget {
           children: requesters
               .map((r) => ListTile(
                     title: Text(r.fullName),
-                    trailing: Switch(
-                      value: r.aktif,
-                      onChanged: (val) async {
-                        await ref.read(masterDataRepositoryProvider).upsertRequester(
-                              Requester(id: r.id, fullName: r.fullName, aktif: val),
-                            );
-                        ref.invalidate(requestersProvider);
-                      },
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Switch(
+                          value: r.aktif,
+                          onChanged: !duzenlenebilir
+                              ? null
+                              : (val) async {
+                                  await ref.read(masterDataRepositoryProvider).upsertRequester(
+                                        Requester(id: r.id, fullName: r.fullName, aktif: val),
+                                      );
+                                  ref.invalidate(requestersProvider);
+                                },
+                        ),
+                        if (duzenlenebilir)
+                          IconButton(
+                            icon: const Icon(Icons.delete_outline),
+                            onPressed: () => _sil(
+                              context,
+                              ref,
+                              baslik: 'Talep Edeni Sil',
+                              sil: () => ref.read(masterDataRepositoryProvider).deleteRequester(r.id),
+                              sonrasindaGuncelle: () => ref.invalidate(requestersProvider),
+                            ),
+                          ),
+                      ],
                     ),
+                    onTap: duzenlenebilir ? () => _isimDuzenle(context, r.fullName, (isim) async {
+                          await ref.read(masterDataRepositoryProvider).upsertRequester(
+                                Requester(id: r.id, fullName: isim, aktif: r.aktif),
+                              );
+                          ref.invalidate(requestersProvider);
+                        }) : null,
                   ))
               .toList(),
         ),
-        floatingActionButton: FloatingActionButton(
-          onPressed: () => _isimEkle(
-            context,
-            'Yeni Talep Eden',
-            (isim) async {
-              await ref.read(masterDataRepositoryProvider).upsertRequester(
-                    Requester(id: _uuid.v4(), fullName: isim),
-                  );
-              ref.invalidate(requestersProvider);
-            },
-          ),
-          child: const Icon(Icons.add),
-        ),
+        floatingActionButton: !duzenlenebilir
+            ? null
+            : FloatingActionButton(
+                onPressed: () => _isimEkle(
+                  context,
+                  'Yeni Talep Eden',
+                  (isim) async {
+                    await ref.read(masterDataRepositoryProvider).upsertRequester(
+                          Requester(id: _uuid.v4(), fullName: isim),
+                        );
+                    ref.invalidate(requestersProvider);
+                  },
+                ),
+                child: const Icon(Icons.add),
+              ),
       ),
     );
   }
 }
 
-class _ManagersTab extends ConsumerWidget {
-  const _ManagersTab();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final managersAsync = ref.watch(managersProvider);
-    return managersAsync.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) => Center(child: Text('Hata: $e')),
-      data: (managers) => Scaffold(
-        body: ListView(
-          children: managers
-              .map((m) => ListTile(
-                    title: Text(m.fullName),
-                    trailing: Switch(
-                      value: m.aktif,
-                      onChanged: (val) async {
-                        await ref.read(masterDataRepositoryProvider).upsertManager(
-                              Manager(id: m.id, fullName: m.fullName, aktif: val),
-                            );
-                        ref.invalidate(managersProvider);
-                      },
-                    ),
-                  ))
-              .toList(),
-        ),
-        floatingActionButton: FloatingActionButton(
-          onPressed: () => _isimEkle(
-            context,
-            'Yeni Yonetici',
-            (isim) async {
-              await ref.read(masterDataRepositoryProvider).upsertManager(
-                    Manager(id: _uuid.v4(), fullName: isim),
-                  );
-              ref.invalidate(managersProvider);
-            },
-          ),
-          child: const Icon(Icons.add),
-        ),
-      ),
-    );
-  }
-}
 
 class _CompaniesTab extends ConsumerWidget {
   const _CompaniesTab();
@@ -296,6 +356,7 @@ class _CompaniesTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final companiesAsync = ref.watch(companiesProvider);
+    final duzenlenebilir = ref.watch(isManagerOrAdminProvider);
     return companiesAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (e, _) => Center(child: Text('Hata: $e')),
@@ -305,23 +366,43 @@ class _CompaniesTab extends ConsumerWidget {
               .map((c) => ListTile(
                     title: Text(c.name),
                     subtitle: Text(c.sehir ?? ''),
-                    trailing: Switch(
-                      value: c.aktif,
-                      onChanged: (val) async {
-                        await ref.read(masterDataRepositoryProvider).upsertCompany(
-                              Company(id: c.id, name: c.name, sehir: c.sehir, aktif: val),
-                            );
-                        ref.invalidate(companiesProvider);
-                      },
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Switch(
+                          value: c.aktif,
+                          onChanged: !duzenlenebilir
+                              ? null
+                              : (val) async {
+                                  await ref.read(masterDataRepositoryProvider).upsertCompany(
+                                        Company(id: c.id, name: c.name, sehir: c.sehir, aktif: val),
+                                      );
+                                  ref.invalidate(companiesProvider);
+                                },
+                        ),
+                        if (duzenlenebilir)
+                          IconButton(
+                            icon: const Icon(Icons.delete_outline),
+                            onPressed: () => _sil(
+                              context,
+                              ref,
+                              baslik: 'Şirketi Sil',
+                              sil: () => ref.read(masterDataRepositoryProvider).deleteCompany(c.id),
+                              sonrasindaGuncelle: () => ref.invalidate(companiesProvider),
+                            ),
+                          ),
+                      ],
                     ),
-                    onTap: () => _dialog(context, ref, c),
+                    onTap: duzenlenebilir ? () => _dialog(context, ref, c) : null,
                   ))
               .toList(),
         ),
-        floatingActionButton: FloatingActionButton(
-          onPressed: () => _dialog(context, ref, null),
-          child: const Icon(Icons.add),
-        ),
+        floatingActionButton: !duzenlenebilir
+            ? null
+            : FloatingActionButton(
+                onPressed: () => _dialog(context, ref, null),
+                child: const Icon(Icons.add),
+              ),
       ),
     );
   }
@@ -332,22 +413,22 @@ class _CompaniesTab extends ConsumerWidget {
     final kaydet = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(company == null ? 'Yeni Sirket' : 'Sirketi Duzenle'),
+        title: Text(company == null ? 'Yeni Şirket' : 'Şirketi Düzenle'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
               controller: nameController,
-              decoration: const InputDecoration(labelText: 'Sirket Adi'),
+              decoration: const InputDecoration(labelText: 'Şirket Adı'),
             ),
             TextField(
               controller: sehirController,
-              decoration: const InputDecoration(labelText: 'Sehir'),
+              decoration: const InputDecoration(labelText: 'Şehir'),
             ),
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Iptal')),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('İptal')),
           FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Kaydet')),
         ],
       ),
@@ -378,7 +459,32 @@ Future<void> _isimEkle(
         decoration: const InputDecoration(labelText: 'Ad Soyad'),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Iptal')),
+        TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('İptal')),
+        FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Kaydet')),
+      ],
+    ),
+  );
+  if (kaydet == true && controller.text.trim().isNotEmpty) {
+    await onKaydet(controller.text.trim());
+  }
+}
+
+Future<void> _isimDuzenle(
+  BuildContext context,
+  String mevcutIsim,
+  Future<void> Function(String isim) onKaydet,
+) async {
+  final controller = TextEditingController(text: mevcutIsim);
+  final kaydet = await showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Adı Düzenle'),
+      content: TextField(
+        controller: controller,
+        decoration: const InputDecoration(labelText: 'Ad Soyad'),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('İptal')),
         FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Kaydet')),
       ],
     ),

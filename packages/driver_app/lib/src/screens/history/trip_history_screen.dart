@@ -19,13 +19,13 @@ class TripHistoryScreen extends ConsumerWidget {
     final historyAsync = ref.watch(_tripHistoryProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Sefer Gecmisi')),
+      appBar: AppBar(title: const Text('Sefer Geçmişi')),
       body: historyAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Sefer gecmisi yuklenemedi: $e')),
+        error: (e, _) => Center(child: Text('Sefer geçmişi yüklenemedi: $e')),
         data: (trips) {
           if (trips.isEmpty) {
-            return const Center(child: Text('Henuz tamamlanmis sefer yok.'));
+            return const Center(child: Text('Henüz tamamlanmış sefer yok.'));
           }
           return ListView.separated(
             itemCount: trips.length,
@@ -63,7 +63,7 @@ class _TripTile extends ConsumerWidget {
         if (trip.fabrikaCikisAt != null)
           ListTile(
             dense: true,
-            title: const Text('Fabrika Cikis'),
+            title: const Text('Fabrika Çıkış'),
             trailing: Text(dateFormat.format(trip.fabrikaCikisAt!)),
           ),
         stopsAsync.when(
@@ -75,8 +75,8 @@ class _TripTile extends ConsumerWidget {
                       dense: true,
                       title: Text(s.gidilenSirketFree ?? '${s.sira}. durak'),
                       subtitle: Text(
-                        'Giris: ${dateFormat.format(s.firmaGirisAt)}'
-                        '${s.firmaCikisAt != null ? " - Cikis: ${dateFormat.format(s.firmaCikisAt!)}" : ""}',
+                        'Giriş: ${dateFormat.format(s.firmaGirisAt)}'
+                        '${s.firmaCikisAt != null ? " - Çıkış: ${dateFormat.format(s.firmaCikisAt!)}" : ""}',
                       ),
                     ))
                 .toList(),
@@ -85,7 +85,7 @@ class _TripTile extends ConsumerWidget {
         if (trip.fabrikaGirisAt != null)
           ListTile(
             dense: true,
-            title: const Text('Fabrika Giris'),
+            title: const Text('Fabrika Giriş'),
             trailing: Text(dateFormat.format(trip.fabrikaGirisAt!)),
           ),
       ],

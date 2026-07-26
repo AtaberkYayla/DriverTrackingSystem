@@ -15,15 +15,40 @@ class TripDetailScreen extends ConsumerStatefulWidget {
 }
 
 class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
-  late OnayDurumu _onayDurumu = widget.stopWithTrip.stop.onayDurumu;
-  late SeferDurumu _seferDurumu = widget.stopWithTrip.stop.seferDurumu;
-  late final _notlarController =
-      TextEditingController(text: widget.stopWithTrip.stop.notlar);
+  // Bu ekran sadece durak kaydi olan seferler icin acilir (bkz.
+  // TripListScreen'de stop == null olan satirlarda onSelectChanged yok).
+  TripStop get _stop => widget.stopWithTrip.stop!;
+  Trip get _trip => widget.stopWithTrip.trip;
+
+  late OnayDurumu _onayDurumu = _stop.onayDurumu;
+  late SeferDurumu _seferDurumu = _stop.seferDurumu;
+  late final _notlarController = TextEditingController(text: _stop.notlar);
   bool _kaydediliyor = false;
+
+  bool _duzenlemeAcik = false;
+  late String? _seciliTripTypeId = _stop.tripTypeId;
+  late String? _seciliRequesterId = _stop.requesterId;
+  late final _cikisNedeniController = TextEditingController(text: _stop.cikisNedeni);
+  late final _gidilenIlController = TextEditingController(text: _stop.gidilenIl);
+  late final _gidilenIlceController = TextEditingController(text: _stop.gidilenIlce);
+  late String? _seciliSirketId = _stop.gidilenSirketId;
+  late final _gidilenSirketFreeController = TextEditingController(text: _stop.gidilenSirketFree);
+  late final _irsaliyeNoController = TextEditingController(text: _stop.irsaliyeNo);
+  late String _seciliVehicleId = _trip.vehicleId;
+  late final _tarihController = TextEditingController(text: _trip.tarih);
+  late DateTime? _fabrikaCikisAt = _trip.fabrikaCikisAt;
+  late DateTime? _fabrikaGirisAt = _trip.fabrikaGirisAt;
+  bool _detayKaydediliyor = false;
 
   @override
   void dispose() {
     _notlarController.dispose();
+    _cikisNedeniController.dispose();
+    _gidilenIlController.dispose();
+    _gidilenIlceController.dispose();
+    _gidilenSirketFreeController.dispose();
+    _irsaliyeNoController.dispose();
+    _tarihController.dispose();
     super.dispose();
   }
 
@@ -33,7 +58,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
     setState(() => _kaydediliyor = true);
     try {
       await ref.read(tripRepositoryProvider).updateApproval(
-            stopId: widget.stopWithTrip.stop.id,
+            stopId: _stop.id,
             onayDurumu: _onayDurumu,
             onaylayanId: profile.id,
             seferDurumu: _seferDurumu,
@@ -46,54 +71,164 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
     }
   }
 
+  Future<void> _detaylariKaydet() async {
+    setState(() => _detayKaydediliyor = true);
+    try {
+      final repo = ref.read(tripRepositoryProvider);
+      // copyWith kullanilmiyor: nullable alanlari (ör. talep eden kisiyi
+      // "-" secerek temizlemek) copyWith'in "??" mantigi geri eski degere
+      // dusurur, bu yuzden burada TripStop dogrudan tum alanlarla kuruluyor.
+      await repo.updateTripStopDetails(TripStop(
+        id: _stop.id,
+        clientStopId: _stop.clientStopId,
+        tripId: _stop.tripId,
+        sira: _stop.sira,
+        firmaGirisAt: _stop.firmaGirisAt,
+        tripTypeId: _seciliTripTypeId,
+        requesterId: _seciliRequesterId,
+        cikisNedeni:
+            _cikisNedeniController.text.trim().isEmpty ? null : _cikisNedeniController.text.trim(),
+        gidilenIl: _gidilenIlController.text.trim().isEmpty ? null : _gidilenIlController.text.trim(),
+        gidilenIlce:
+            _gidilenIlceController.text.trim().isEmpty ? null : _gidilenIlceController.text.trim(),
+        gidilenSirketId: _seciliSirketId,
+        gidilenSirketFree: _gidilenSirketFreeController.text.trim().isEmpty
+            ? null
+            : _gidilenSirketFreeController.text.trim(),
+        irsaliyeNo:
+            _irsaliyeNoController.text.trim().isEmpty ? null : _irsaliyeNoController.text.trim(),
+        firmaCikisAt: _stop.firmaCikisAt,
+        onayDurumu: _stop.onayDurumu,
+        onaylayanId: _stop.onaylayanId,
+        onaylandiAt: _stop.onaylandiAt,
+        seferDurumu: _stop.seferDurumu,
+        notlar: _stop.notlar,
+      ));
+      await repo.updateTrip(Trip(
+        id: _trip.id,
+        clientTripId: _trip.clientTripId,
+        driverId: _trip.driverId,
+        vehicleId: _seciliVehicleId,
+        tarih: _tarihController.text.trim(),
+        fabrikaCikisAt: _fabrikaCikisAt,
+        fabrikaGirisAt: _fabrikaGirisAt,
+      ));
+      ref.invalidate(tripListProvider);
+      if (mounted) Navigator.of(context).pop();
+    } finally {
+      if (mounted) setState(() => _detayKaydediliyor = false);
+    }
+  }
+
+  Future<void> _sil() async {
+    final secim = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Sil'),
+        content: const Text(
+            'Sadece bu durağı mı, yoksa seferin tamamını mı silmek istiyorsunuz? Bu işlem geri alınamaz.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, null), child: const Text('İptal')),
+          TextButton(
+              onPressed: () => Navigator.pop(context, 'stop'), child: const Text('Durağı Sil')),
+          FilledButton(
+              onPressed: () => Navigator.pop(context, 'trip'),
+              child: const Text('Seferin Tamamını Sil')),
+        ],
+      ),
+    );
+    if (secim == null) return;
+    final repo = ref.read(tripRepositoryProvider);
+    if (secim == 'stop') {
+      await repo.deleteTripStop(_stop.id);
+    } else {
+      await repo.deleteTrip(_trip.id);
+    }
+    ref.invalidate(tripListProvider);
+    if (mounted) Navigator.of(context).pop();
+  }
+
   @override
   Widget build(BuildContext context) {
-    final trip = widget.stopWithTrip.trip;
-    final stop = widget.stopWithTrip.stop;
+    final trip = _trip;
+    final stop = _stop;
     final refDataAsync = ref.watch(referenceDataProvider);
     final dateFormat = DateFormat('dd.MM.yyyy HH:mm');
+    final isManagerOrAdmin = ref.watch(isManagerOrAdminProvider);
 
     return Scaffold(
-      appBar: AppBar(title: Text('Sefer Detayi - ${trip.tarih}')),
+      appBar: AppBar(
+        title: Text('Sefer Detayı - ${trip.tarih}'),
+        actions: [
+          if (isManagerOrAdmin)
+            IconButton(
+              icon: const Icon(Icons.delete_outline),
+              tooltip: 'Sil',
+              onPressed: _sil,
+            ),
+        ],
+      ),
       body: refDataAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Referans veri yuklenemedi: $e')),
+        error: (e, _) => Center(child: Text('Referans veri yüklenemedi: $e')),
         data: (refData) {
           return ListView(
             padding: const EdgeInsets.all(24),
             children: [
-              _bilgiSatiri('Sofor', refData.surucuAdi(trip.driverId)),
-              _bilgiSatiri('Arac Plakasi', refData.aracPlakasi(trip.vehicleId)),
-              _bilgiSatiri('Seyahat Turu', refData.seferTuruAdi(stop.tripTypeId)),
-              _bilgiSatiri('Talep Eden Kisi', refData.talepEdenAdi(stop.requesterId)),
-              _bilgiSatiri('Cikis Nedeni / Gorev', stop.cikisNedeni ?? '-'),
-              _bilgiSatiri(
-                'Gidilen Lokasyon',
-                [stop.gidilenIl, stop.gidilenIlce].whereType<String>().join(' / '),
-              ),
-              _bilgiSatiri(
-                'Gidilen Sirket',
-                stop.gidilenSirketId != null
-                    ? refData.sirketAdi(stop.gidilenSirketId)
-                    : (stop.gidilenSirketFree ?? '-'),
-              ),
-              _bilgiSatiri('Irsaliye No', stop.irsaliyeNo ?? '-'),
+              _bilgiSatiri('Şoför', refData.surucuAdi(trip.driverId)),
+              if (!_duzenlemeAcik) ...[
+                _bilgiSatiri('Araç Plakası', refData.aracPlakasi(trip.vehicleId)),
+                _bilgiSatiri('Seyahat Türü', refData.seferTuruAdi(stop.tripTypeId)),
+                _bilgiSatiri('Talep Eden Kişi', refData.talepEdenAdi(stop.requesterId)),
+                _bilgiSatiri('Çıkış Nedeni / Görev', stop.cikisNedeni ?? '-'),
+                _bilgiSatiri(
+                  'Gidilen Lokasyon',
+                  [stop.gidilenIl, stop.gidilenIlce].whereType<String>().join(' / '),
+                ),
+                _bilgiSatiri(
+                  'Gidilen Şirket',
+                  stop.gidilenSirketId != null
+                      ? refData.sirketAdi(stop.gidilenSirketId)
+                      : (stop.gidilenSirketFree ?? '-'),
+                ),
+                _bilgiSatiri('İrsaliye No', stop.irsaliyeNo ?? '-'),
+                _bilgiSatiri(
+                  'Fabrika Çıkış',
+                  _fabrikaCikisAt == null ? '-' : dateFormat.format(_fabrikaCikisAt!),
+                ),
+                _bilgiSatiri(
+                  'Fabrika Giriş (sefer kapanışı)',
+                  _fabrikaGirisAt == null ? '-' : dateFormat.format(_fabrikaGirisAt!),
+                ),
+              ] else
+                _detayDuzenlemeFormu(context, refData),
+              if (isManagerOrAdmin) ...[
+                const SizedBox(height: 12),
+                OutlinedButton.icon(
+                  icon: Icon(_duzenlemeAcik ? Icons.close : Icons.edit_outlined),
+                  label: Text(
+                      _duzenlemeAcik ? 'Düzenlemeyi İptal Et' : 'Sefer Detaylarını Düzenle'),
+                  onPressed: () => setState(() => _duzenlemeAcik = !_duzenlemeAcik),
+                ),
+                if (_duzenlemeAcik) ...[
+                  const SizedBox(height: 12),
+                  FilledButton(
+                    onPressed: _detayKaydediliyor ? null : _detaylariKaydet,
+                    child: _detayKaydediliyor
+                        ? const SizedBox(
+                            width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                        : const Text('Sefer Detaylarını Kaydet'),
+                  ),
+                ],
+              ],
               const Divider(height: 32),
+              _bilgiSatiri('Firma Giriş', dateFormat.format(stop.firmaGirisAt)),
               _bilgiSatiri(
-                'Fabrika Cikis',
-                trip.fabrikaCikisAt == null ? '-' : dateFormat.format(trip.fabrikaCikisAt!),
-              ),
-              _bilgiSatiri('Firma Giris', dateFormat.format(stop.firmaGirisAt)),
-              _bilgiSatiri(
-                'Firma Cikis',
+                'Firma Çıkış',
                 stop.firmaCikisAt == null ? '-' : dateFormat.format(stop.firmaCikisAt!),
               ),
-              _bilgiSatiri(
-                'Fabrika Giris (sefer kapanisi)',
-                trip.fabrikaGirisAt == null ? '-' : dateFormat.format(trip.fabrikaGirisAt!),
-              ),
               const Divider(height: 32),
-              Text('Onay / Degerlendirme', style: Theme.of(context).textTheme.titleMedium),
+              Text('Onay / Değerlendirme', style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 12),
               DropdownButtonFormField<OnayDurumu>(
                 initialValue: _onayDurumu,
@@ -104,7 +239,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
                 items: OnayDurumu.values
                     .map((d) => DropdownMenuItem(
                           value: d,
-                          child: Text(d == OnayDurumu.onaylandi ? 'Onaylandi' : 'Beklemede'),
+                          child: Text(d == OnayDurumu.onaylandi ? 'Onaylandı' : 'Beklemede'),
                         ))
                     .toList(),
                 onChanged: (v) => setState(() => _onayDurumu = v!),
@@ -119,8 +254,8 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
                 items: const [
                   DropdownMenuItem(
                       value: SeferDurumu.devamEdiyor, child: Text('Devam Ediyor')),
-                  DropdownMenuItem(value: SeferDurumu.basarili, child: Text('Basarili')),
-                  DropdownMenuItem(value: SeferDurumu.basarisiz, child: Text('Basarisiz')),
+                  DropdownMenuItem(value: SeferDurumu.basarili, child: Text('Başarılı')),
+                  DropdownMenuItem(value: SeferDurumu.basarisiz, child: Text('Başarısız')),
                 ],
                 onChanged: (v) => setState(() => _seferDurumu = v!),
               ),
@@ -128,7 +263,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
               TextFormField(
                 controller: _notlarController,
                 decoration: const InputDecoration(
-                  labelText: 'Notlar / Aciklamalar',
+                  labelText: 'Notlar / Açıklamalar',
                   border: OutlineInputBorder(),
                 ),
                 maxLines: 3,
@@ -145,6 +280,149 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
           );
         },
       ),
+    );
+  }
+
+  Widget _detayDuzenlemeFormu(BuildContext context, ReferenceData refData) {
+    final vehiclesAsync = ref.watch(vehiclesProvider);
+    final tripTypesAsync = ref.watch(tripTypesProvider);
+    final requestersAsync = ref.watch(requestersProvider);
+    final companiesAsync = ref.watch(companiesProvider);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        vehiclesAsync.maybeWhen(
+          data: (vehicles) => DropdownButtonFormField<String>(
+            initialValue: _seciliVehicleId,
+            decoration: const InputDecoration(labelText: 'Araç Plakası', border: OutlineInputBorder()),
+            items: vehicles.map((v) => DropdownMenuItem(value: v.id, child: Text(v.plaka))).toList(),
+            onChanged: (v) => setState(() => _seciliVehicleId = v ?? _seciliVehicleId),
+          ),
+          orElse: () => const SizedBox.shrink(),
+        ),
+        const SizedBox(height: 16),
+        TextFormField(
+          controller: _tarihController,
+          decoration: const InputDecoration(labelText: 'Tarih (YYYY-MM-DD)', border: OutlineInputBorder()),
+        ),
+        const SizedBox(height: 16),
+        tripTypesAsync.maybeWhen(
+          data: (tripTypes) => DropdownButtonFormField<String?>(
+            initialValue: _seciliTripTypeId,
+            decoration: const InputDecoration(labelText: 'Seyahat Türü', border: OutlineInputBorder()),
+            items: [
+              const DropdownMenuItem(value: null, child: Text('-')),
+              ...tripTypes.map((t) => DropdownMenuItem(value: t.id, child: Text(t.label))),
+            ],
+            onChanged: (v) => setState(() => _seciliTripTypeId = v),
+          ),
+          orElse: () => const SizedBox.shrink(),
+        ),
+        const SizedBox(height: 16),
+        requestersAsync.maybeWhen(
+          data: (requesters) => DropdownButtonFormField<String?>(
+            initialValue: _seciliRequesterId,
+            decoration:
+                const InputDecoration(labelText: 'Talep Eden Kişi', border: OutlineInputBorder()),
+            items: [
+              const DropdownMenuItem(value: null, child: Text('-')),
+              ...requesters.map((r) => DropdownMenuItem(value: r.id, child: Text(r.fullName))),
+            ],
+            onChanged: (v) => setState(() => _seciliRequesterId = v),
+          ),
+          orElse: () => const SizedBox.shrink(),
+        ),
+        const SizedBox(height: 16),
+        TextFormField(
+          controller: _cikisNedeniController,
+          decoration:
+              const InputDecoration(labelText: 'Çıkış Nedeni / Görev', border: OutlineInputBorder()),
+          maxLines: 2,
+        ),
+        const SizedBox(height: 16),
+        TextFormField(
+          controller: _gidilenIlController,
+          decoration: const InputDecoration(labelText: 'Gidilen İl', border: OutlineInputBorder()),
+        ),
+        const SizedBox(height: 16),
+        TextFormField(
+          controller: _gidilenIlceController,
+          decoration: const InputDecoration(labelText: 'Gidilen İlçe', border: OutlineInputBorder()),
+        ),
+        const SizedBox(height: 16),
+        companiesAsync.maybeWhen(
+          data: (companies) => DropdownButtonFormField<String?>(
+            initialValue: _seciliSirketId,
+            decoration:
+                const InputDecoration(labelText: 'Gidilen Şirket', border: OutlineInputBorder()),
+            items: [
+              const DropdownMenuItem(value: null, child: Text('Listede yok / serbest metin')),
+              ...companies.map((c) => DropdownMenuItem(value: c.id, child: Text(c.name))),
+            ],
+            onChanged: (v) => setState(() => _seciliSirketId = v),
+          ),
+          orElse: () => const SizedBox.shrink(),
+        ),
+        const SizedBox(height: 16),
+        TextFormField(
+          controller: _gidilenSirketFreeController,
+          decoration: const InputDecoration(
+              labelText: 'Gidilen Şirket (serbest metin)', border: OutlineInputBorder()),
+        ),
+        const SizedBox(height: 16),
+        TextFormField(
+          controller: _irsaliyeNoController,
+          decoration: const InputDecoration(labelText: 'İrsaliye No', border: OutlineInputBorder()),
+        ),
+        const SizedBox(height: 16),
+        _tarihSaatSecici(
+          label: 'Fabrika Çıkış',
+          deger: _fabrikaCikisAt,
+          onChanged: (v) => setState(() => _fabrikaCikisAt = v),
+        ),
+        const SizedBox(height: 16),
+        _tarihSaatSecici(
+          label: 'Fabrika Giriş (sefer kapanışı)',
+          deger: _fabrikaGirisAt,
+          onChanged: (v) => setState(() => _fabrikaGirisAt = v),
+        ),
+      ],
+    );
+  }
+
+  Widget _tarihSaatSecici({
+    required String label,
+    required DateTime? deger,
+    required void Function(DateTime?) onChanged,
+  }) {
+    final dateFormat = DateFormat('dd.MM.yyyy HH:mm');
+    return Row(
+      children: [
+        Expanded(
+          child: Text('$label: ${deger == null ? '-' : dateFormat.format(deger)}'),
+        ),
+        TextButton(
+          onPressed: () async {
+            final tarih = await showDatePicker(
+              context: context,
+              initialDate: deger ?? DateTime.now(),
+              firstDate: DateTime(2020),
+              lastDate: DateTime(2100),
+            );
+            if (tarih == null || !mounted) return;
+            final saat = await showTimePicker(
+              context: context,
+              initialTime: TimeOfDay.fromDateTime(deger ?? DateTime.now()),
+            );
+            if (saat == null) return;
+            onChanged(DateTime(tarih.year, tarih.month, tarih.day, saat.hour, saat.minute));
+          },
+          child: const Text('Seç'),
+        ),
+        if (deger != null)
+          TextButton(onPressed: () => onChanged(null), child: const Text('Temizle')),
+      ],
     );
   }
 

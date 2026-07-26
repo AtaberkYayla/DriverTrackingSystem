@@ -1,0 +1,22 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "driver_app (Chrome/Emulator)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "cwd": "packages/driver_app",
+      "args": ["--dart-define-from-file=env/supabase.json"]
+    },
+    {
+      "name": "admin_web (Chrome)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "cwd": "packages/admin_web",
+      "deviceId": "chrome",
+      "args": ["--dart-define-from-file=env/supabase.json"]
+    }
+  ]
+}

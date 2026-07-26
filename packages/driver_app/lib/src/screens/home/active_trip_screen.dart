@@ -1,0 +1,322 @@
+import 'package:core/core.dart';
+import 'package:drift/drift.dart' show Value;
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
+import 'package:uuid/uuid.dart';
+
+import '../../local/app_database.dart';
+import '../../providers/app_providers.dart';
+import '../../widgets/sync_status_banner.dart';
+import '../history/trip_history_screen.dart';
+import 'trip_detail_form.dart';
+
+class ActiveTripScreen extends ConsumerStatefulWidget {
+  const ActiveTripScreen({super.key});
+
+  @override
+  ConsumerState<ActiveTripScreen> createState() => _ActiveTripScreenState();
+}
+
+class _ActiveTripScreenState extends ConsumerState<ActiveTripScreen> {
+  static const _uuid = Uuid();
+  VehiclesCacheData? _seciliArac;
+  bool _islemDevamEdiyor = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final profileAsync = ref.watch(currentProfileProvider);
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Aktif Sefer'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.history),
+            tooltip: 'Sefer Gecmisi',
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const TripHistoryScreen()),
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.logout),
+            tooltip: 'Cikis Yap',
+            onPressed: () => ref.read(authRepositoryProvider).signOut(),
+          ),
+        ],
+      ),
+      body: profileAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, _) => Center(child: Text('Profil yuklenemedi: $e')),
+        data: (profile) {
+          if (profile == null) {
+            return const Center(child: Text('Oturum bulunamadi.'));
+          }
+          return Column(
+            children: [
+              const SyncStatusBanner(),
+              Expanded(child: _icerik(profile)),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _icerik(Profile profile) {
+    final activeTripAsync = ref.watch(activeTripProvider(profile.id));
+
+    return activeTripAsync.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (e, _) => Center(child: Text('Sefer bilgisi yuklenemedi: $e')),
+      data: (trip) {
+        if (trip == null) return _yeniSeferBaslat(profile);
+        return _aktifSeferGorunumu(profile, trip);
+      },
+    );
+  }
+
+  Widget _yeniSeferBaslat(Profile profile) {
+    final vehiclesAsync = ref.watch(vehiclesProvider);
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Icon(Icons.directions_car_outlined, size: 64),
+          const SizedBox(height: 16),
+          Text(
+            'Aktif seferiniz yok. Araci secip fabrikadan cikiyorsaniz\n'
+            '"Fabrika Cikis", dogrudan bir firmaya gidiyorsaniz\n'
+            '"Firma Giris" butonuna basin.',
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 24),
+          vehiclesAsync.when(
+            loading: () => const CircularProgressIndicator(),
+            error: (e, _) => Text('Araclar yuklenemedi: $e'),
+            data: (vehicles) => DropdownButtonFormField<VehiclesCacheData>(
+              initialValue: _seciliArac,
+              decoration: const InputDecoration(
+                labelText: 'Arac Plakasi',
+                border: OutlineInputBorder(),
+              ),
+              items: vehicles
+                  .map((v) => DropdownMenuItem(value: v, child: Text(v.plaka)))
+                  .toList(),
+              onChanged: (v) => setState(() => _seciliArac = v),
+            ),
+          ),
+          const SizedBox(height: 24),
+          FilledButton.icon(
+            icon: const Icon(Icons.factory_outlined),
+            label: const Text('Fabrika Cikis'),
+            onPressed: (_seciliArac == null || _islemDevamEdiyor)
+                ? null
+                : () => _fabrikaCikisIleBaslat(profile),
+          ),
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            icon: const Icon(Icons.business_outlined),
+            label: const Text('Dogrudan Firma Giris'),
+            onPressed: (_seciliArac == null || _islemDevamEdiyor)
+                ? null
+                : () => _firmaGirisIleBaslat(profile),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _bugunTarih(DateTime now) {
+    final ay = now.month.toString().padLeft(2, '0');
+    final gun = now.day.toString().padLeft(2, '0');
+    return '${now.year}-$ay-$gun';
+  }
+
+  Future<void> _fabrikaCikisIleBaslat(Profile profile) async {
+    setState(() => _islemDevamEdiyor = true);
+    final now = DateTime.now();
+    final clientTripId = _uuid.v4();
+    await ref.read(localStoreProvider).upsertLocalTrip(TripsCacheCompanion.insert(
+          clientTripId: clientTripId,
+          driverId: profile.id,
+          vehicleId: _seciliArac!.id,
+          tarih: _bugunTarih(now),
+          fabrikaCikisAt: Value(now),
+          updatedLocallyAt: now,
+        ));
+    ref.read(syncServiceProvider).drainOutbox();
+    if (mounted) setState(() => _islemDevamEdiyor = false);
+  }
+
+  Future<void> _firmaGirisIleBaslat(Profile profile) async {
+    final vehicleId = _seciliArac!.id;
+    final now = DateTime.now();
+    final clientTripId = _uuid.v4();
+
+    setState(() => _islemDevamEdiyor = true);
+    await ref.read(localStoreProvider).upsertLocalTrip(TripsCacheCompanion.insert(
+          clientTripId: clientTripId,
+          driverId: profile.id,
+          vehicleId: vehicleId,
+          tarih: _bugunTarih(now),
+          updatedLocallyAt: now,
+        ));
+    if (mounted) setState(() => _islemDevamEdiyor = false);
+
+    if (!mounted) return;
+    final sonuc = await showTripDetailForm(context);
+    if (sonuc == null) {
+      // Form iptal edildi; bos sefer kaydini geri al.
+      await ref.read(localStoreProvider).localSeferiSil(clientTripId);
+      return;
+    }
+    await _durakEkle(clientTripId, sonuc);
+  }
+
+  Widget _aktifSeferGorunumu(Profile profile, TripsCacheData trip) {
+    final openStopAsync = ref.watch(openStopProvider(trip.clientTripId));
+    final stopsAsync = ref.watch(stopsForTripProvider(trip.clientTripId));
+    final dateFormat = DateFormat('HH:mm');
+
+    return openStopAsync.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (e, _) => Center(child: Text('Durak bilgisi yuklenemedi: $e')),
+      data: (openStop) {
+        return ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Sefer devam ediyor', style: Theme.of(context).textTheme.titleMedium),
+                    const SizedBox(height: 8),
+                    if (trip.fabrikaCikisAt != null)
+                      Text('Fabrika Cikis: ${dateFormat.format(trip.fabrikaCikisAt!)}'),
+                    if (trip.fabrikaCikisAt == null)
+                      const Text('Fabrika Cikis yapilmadi (dogrudan firmaya gidildi).'),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            stopsAsync.when(
+              loading: () => const SizedBox.shrink(),
+              error: (e, _) => Text('Duraklar yuklenemedi: $e'),
+              data: (stops) => Column(
+                children: stops
+                    .map((s) => Card(
+                          child: ListTile(
+                            leading: Icon(
+                              s.firmaCikisAt == null ? Icons.pending_outlined : Icons.check_circle_outline,
+                              color: s.firmaCikisAt == null ? Colors.orange : Colors.green,
+                            ),
+                            title: Text(s.gidilenSirketFree ?? '${s.sira}. durak'),
+                            subtitle: Text(
+                              s.firmaCikisAt == null
+                                  ? 'Giris: ${dateFormat.format(s.firmaGirisAt)} - hala icerde'
+                                  : 'Giris: ${dateFormat.format(s.firmaGirisAt)} - Cikis: ${dateFormat.format(s.firmaCikisAt!)}',
+                            ),
+                          ),
+                        ))
+                    .toList(),
+              ),
+            ),
+            const SizedBox(height: 24),
+            if (openStop != null)
+              FilledButton(
+                onPressed: _islemDevamEdiyor ? null : () => _firmaCikisYap(trip, openStop),
+                child: const Text('Firma Cikis'),
+              )
+            else ...[
+              FilledButton.icon(
+                icon: const Icon(Icons.business_outlined),
+                label: const Text('Firma Giris'),
+                onPressed: _islemDevamEdiyor ? null : () => _firmaGirisYap(trip),
+              ),
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                icon: const Icon(Icons.factory_outlined),
+                label: const Text('Fabrika Giris (Seferi Bitir)'),
+                onPressed: _islemDevamEdiyor ? null : () => _fabrikaGirisYap(trip),
+              ),
+            ],
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _firmaGirisYap(TripsCacheData trip) async {
+    final sonuc = await showTripDetailForm(context);
+    if (sonuc == null) return;
+    await _durakEkle(trip.clientTripId, sonuc);
+  }
+
+  Future<void> _durakEkle(String clientTripId, TripDetailFormResult sonuc) async {
+    setState(() => _islemDevamEdiyor = true);
+    final now = DateTime.now();
+    final sira = await ref.read(localStoreProvider).sonrakiDurakSirasi(clientTripId);
+    await ref.read(localStoreProvider).upsertLocalStop(TripStopsCacheCompanion.insert(
+          clientStopId: _uuid.v4(),
+          clientTripId: clientTripId,
+          sira: sira,
+          firmaGirisAt: now,
+          tripTypeId: Value(sonuc.tripTypeId),
+          requesterId: Value(sonuc.requesterId),
+          cikisNedeni: Value(sonuc.cikisNedeni),
+          gidilenIl: Value(sonuc.gidilenIl),
+          gidilenIlce: Value(sonuc.gidilenIlce),
+          gidilenSirketId: Value(sonuc.gidilenSirketId),
+          gidilenSirketFree: Value(sonuc.gidilenSirketFree),
+          irsaliyeNo: Value(sonuc.irsaliyeNo),
+          updatedLocallyAt: now,
+        ));
+    ref.read(syncServiceProvider).drainOutbox();
+    if (mounted) setState(() => _islemDevamEdiyor = false);
+  }
+
+  Future<void> _firmaCikisYap(TripsCacheData trip, TripStopsCacheData openStop) async {
+    setState(() => _islemDevamEdiyor = true);
+    final now = DateTime.now();
+    await ref.read(localStoreProvider).upsertLocalStop(TripStopsCacheCompanion(
+          clientStopId: Value(openStop.clientStopId),
+          clientTripId: Value(openStop.clientTripId),
+          sira: Value(openStop.sira),
+          firmaGirisAt: Value(openStop.firmaGirisAt),
+          tripTypeId: Value(openStop.tripTypeId),
+          requesterId: Value(openStop.requesterId),
+          cikisNedeni: Value(openStop.cikisNedeni),
+          gidilenIl: Value(openStop.gidilenIl),
+          gidilenIlce: Value(openStop.gidilenIlce),
+          gidilenSirketId: Value(openStop.gidilenSirketId),
+          gidilenSirketFree: Value(openStop.gidilenSirketFree),
+          irsaliyeNo: Value(openStop.irsaliyeNo),
+          firmaCikisAt: Value(now),
+          updatedLocallyAt: Value(now),
+        ));
+    ref.read(syncServiceProvider).drainOutbox();
+    if (mounted) setState(() => _islemDevamEdiyor = false);
+  }
+
+  Future<void> _fabrikaGirisYap(TripsCacheData trip) async {
+    setState(() => _islemDevamEdiyor = true);
+    final now = DateTime.now();
+    await ref.read(localStoreProvider).upsertLocalTrip(TripsCacheCompanion(
+          clientTripId: Value(trip.clientTripId),
+          driverId: Value(trip.driverId),
+          vehicleId: Value(trip.vehicleId),
+          tarih: Value(trip.tarih),
+          fabrikaCikisAt: Value(trip.fabrikaCikisAt),
+          fabrikaGirisAt: Value(now),
+          updatedLocallyAt: Value(now),
+        ));
+    ref.read(syncServiceProvider).drainOutbox();
+    if (mounted) setState(() => _islemDevamEdiyor = false);
+  }
+}

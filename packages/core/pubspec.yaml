@@ -1,0 +1,25 @@
+name: core
+description: "Sofor Takip Sistemi icin paylasilan modeller, repository'ler ve Supabase istemcisi."
+version: 0.0.1
+publish_to: 'none'
+
+environment:
+  sdk: ^3.12.2
+  flutter: ">=1.17.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  json_annotation: ^4.12.0
+  supabase_flutter: ^2.16.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  build_runner: ^2.15.1
+  json_serializable: ^6.14.0
+
+flutter:
+  assets:
+    - assets/il_ilce.json

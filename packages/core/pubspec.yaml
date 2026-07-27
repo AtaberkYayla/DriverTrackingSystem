@@ -23,3 +23,5 @@ dev_dependencies:
 flutter:
   assets:
     - assets/il_ilce.json
+    - assets/branding/dedem-favicon.png
+    - assets/branding/dedem-logo.svg

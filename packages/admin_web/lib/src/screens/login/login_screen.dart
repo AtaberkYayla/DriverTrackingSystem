@@ -66,12 +66,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const Icon(Icons.admin_panel_settings_outlined, size: 64),
+                  Image.asset(
+                    DedemBrand.faviconAssetPath,
+                    package: 'core',
+                    height: 72,
+                  ),
                   const SizedBox(height: 12),
                   Text(
-                    'Dedem Mekatronik\nŞoför Takip - Yönetim Paneli',
+                    'Dedem Mekatronik',
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.headlineSmall,
+                  ),
+                  Text(
+                    'Şoför Takip - Yönetim Paneli',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.bodyLarge,
                   ),
                   const SizedBox(height: 32),
                   TextFormField(

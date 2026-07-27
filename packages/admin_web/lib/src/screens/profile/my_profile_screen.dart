@@ -95,8 +95,10 @@ class _MyProfileScreenState extends ConsumerState<MyProfileScreen> {
                     TextFormField(
                       controller: _notificationEmailController,
                       decoration: const InputDecoration(
-                        labelText: 'Bildirim E-postası (gerçek e-postanız)',
-                        helperText: 'Şoför işlemleriyle ilgili bildirimler bu adrese gelir.',
+                        labelText: 'Bildirim E-postası',
+                        helperText: 'Şoför işlemleriyle ilgili bildirimler bu adrese gelir. '
+                            'Varsayılan olarak giriş e-postanız kullanılır; dilerseniz '
+                            'kendi e-posta adresinizle değiştirebilirsiniz.',
                         border: OutlineInputBorder(),
                       ),
                       keyboardType: TextInputType.emailAddress,

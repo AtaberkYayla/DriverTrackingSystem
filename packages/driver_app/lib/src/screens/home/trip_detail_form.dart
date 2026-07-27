@@ -193,6 +193,7 @@ class _TripDetailFormScreenState extends ConsumerState<TripDetailFormScreen> {
                   const SizedBox(height: 16),
                   if (turkey.ilceZorunluMu(_seciliIl))
                     Autocomplete<String>(
+                      key: ValueKey('ilce-$_seciliIl'),
                       optionsBuilder: (value) => turkey.ilceAra(_seciliIl, value.text),
                       onSelected: (ilce) => _ilceController.text = ilce,
                       fieldViewBuilder: (context, controller, focusNode, onSubmit) {

@@ -1,7 +1,9 @@
+import 'dart:async';
+
 import 'package:core/core.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
-import 'package:supabase_flutter/supabase_flutter.dart' show AuthState;
+import 'package:supabase_flutter/supabase_flutter.dart' show AuthState, PostgresChangeEvent;
 
 final authRepositoryProvider = Provider<AuthRepository>((ref) => AuthRepository());
 
@@ -33,6 +35,20 @@ final isManagerOrAdminProvider = Provider<bool>((ref) {
 final isAdminProvider = Provider<bool>((ref) {
   final profile = ref.watch(currentProfileProvider).value;
   return profile?.role == AppRole.admin;
+});
+
+/// Sadece yonetici mi (admin haric)? Master Veri Yonetimi ekrani
+/// yoneticiden gizlenir; orada duzenleyebilecegi/yapabilecegi bir sey yoktur.
+final isManagerProvider = Provider<bool>((ref) {
+  final profile = ref.watch(currentProfileProvider).value;
+  return profile?.role == AppRole.manager;
+});
+
+/// Onay verici mi? Sefer listesi bu rol icin sadece kendi onay verdigi
+/// (requesters.profile_id kendisine baglanan) duraklarla sinirlanir.
+final isOfficeProvider = Provider<bool>((ref) {
+  final profile = ref.watch(currentProfileProvider).value;
+  return profile?.role == AppRole.office;
 });
 
 final accountsProvider = FutureProvider<List<Account>>((ref) {
@@ -97,17 +113,71 @@ class TripFilters {
   }
 }
 
-final tripFiltersProvider = StateProvider<TripFilters>((ref) => const TripFilters());
+/// Saat bilgisi olmadan bugunun tarihi; sefer listesi varsayilan olarak
+/// bu gune filtrelenir (kullanici baska bir gun secebilir).
+DateTime bugununTarihi() {
+  final now = DateTime.now();
+  return DateTime(now.year, now.month, now.day);
+}
 
-/// Ekran acikken 10 saniyede bir tikleyip sefer listesini ve referans
-/// veriyi otomatik tazeler; manuel yenile butonuna gerek birakmaz.
+final tripFiltersProvider = StateProvider<TripFilters>(
+  (ref) => TripFilters(baslangic: bugununTarihi(), bitis: bugununTarihi()),
+);
+
+/// Ekran acikken 1 dakikada bir tikleyip sefer listesini ve referans
+/// veriyi otomatik tazeler; manuel yenile butonuna gerek birakmaz. UI
+/// tarafinda (trip_list_screen) onceki veri elde tutulup sadece arka planda
+/// yenilendigi icin bu tazeleme goze batmaz.
 final autoRefreshTickProvider = StreamProvider.autoDispose<int>((ref) {
-  return Stream.periodic(const Duration(seconds: 10), (i) => i);
+  return Stream.periodic(const Duration(seconds: 60), (i) => i);
 });
 
-final tripListProvider = FutureProvider.autoDispose<List<TripStopWithTrip>>((ref) {
+/// Surucu uygulamasi (driver_app) 'trips' veya 'trip_stops' tablosuna her
+/// yazdiginda (yeni sefer, fabrika/firma giris-cikis, onay) aninda tetiklenir;
+/// boylece admin_web 60 saniyelik periyodik yenilemeyi beklemeden sefer
+/// listesini hemen tazeler. Bu iki tablonun Supabase projesinde
+/// `supabase_realtime` yayinina eklenmis olmasi gerekir (bkz.
+/// supabase/migration_006_realtime_trips.sql).
+final tripRealtimeProvider = StreamProvider.autoDispose<void>((ref) {
+  final controller = StreamController<void>();
+  final channel = supabase.channel('admin-web-trip-changes')
+    ..onPostgresChanges(
+      event: PostgresChangeEvent.all,
+      schema: 'public',
+      table: 'trips',
+      callback: (payload) => controller.add(null),
+    )
+    ..onPostgresChanges(
+      event: PostgresChangeEvent.all,
+      schema: 'public',
+      table: 'trip_stops',
+      callback: (payload) => controller.add(null),
+    )
+    ..subscribe();
+
+  ref.onDispose(() {
+    controller.close();
+    unawaited(supabase.removeChannel(channel));
+  });
+
+  return controller.stream;
+});
+
+final tripListProvider = FutureProvider.autoDispose<List<TripStopWithTrip>>((ref) async {
   ref.watch(autoRefreshTickProvider);
+  ref.watch(tripRealtimeProvider);
   final filters = ref.watch(tripFiltersProvider);
+  final profile = await ref.watch(currentProfileProvider.future);
+
+  List<String>? allowedRequesterIds;
+  if (profile != null && profile.role == AppRole.office) {
+    final requesters = await ref.watch(requestersProvider.future);
+    allowedRequesterIds = [
+      for (final r in requesters)
+        if (r.profileId == profile.id) r.id,
+    ];
+  }
+
   return ref.watch(tripRepositoryProvider).fetchAllStopsWithTrip(
         driverId: filters.driverId,
         vehicleId: filters.vehicleId,
@@ -115,6 +185,7 @@ final tripListProvider = FutureProvider.autoDispose<List<TripStopWithTrip>>((ref
         seferDurumu: filters.seferDurumu,
         baslangic: filters.baslangic,
         bitis: filters.bitis,
+        allowedRequesterIds: allowedRequesterIds,
       );
 });
 

@@ -278,6 +278,10 @@ class _TripTypesTab extends ConsumerWidget {
   }
 }
 
+/// Bir Talep Eden aslinda sistemde giris yapip onay verebilen bir hesaba
+/// (profiles/auth.users) karsilik gelir (requesters.profile_id). Bu yuzden
+/// bu sekme sadece isim degil, o kisinin giris hesabini da (e-posta+sifre)
+/// olusturur/gunceller - aksi halde o kisi sisteme hic giremez.
 class _RequestersTab extends ConsumerWidget {
   const _RequestersTab();
 
@@ -285,6 +289,11 @@ class _RequestersTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final requestersAsync = ref.watch(requestersProvider);
     final duzenlenebilir = ref.watch(isManagerOrAdminProvider);
+    final emailById = <String, String>{
+      if (duzenlenebilir)
+        for (final a in (ref.watch(accountsProvider).value ?? const <Account>[])) a.id: a.email,
+    };
+
     return requestersAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (e, _) => Center(child: Text('Hata: $e')),
@@ -293,6 +302,14 @@ class _RequestersTab extends ConsumerWidget {
           children: requesters
               .map((r) => ListTile(
                     title: Text(r.fullName),
+                    subtitle: Text(
+                      r.profileId == null
+                          ? 'Giriş hesabı yok'
+                          : (emailById[r.profileId] ?? 'Giriş hesabı var'),
+                      style: TextStyle(
+                        color: r.profileId == null ? Colors.orange.shade800 : Colors.grey.shade600,
+                      ),
+                    ),
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -302,7 +319,12 @@ class _RequestersTab extends ConsumerWidget {
                               ? null
                               : (val) async {
                                   await ref.read(masterDataRepositoryProvider).upsertRequester(
-                                        Requester(id: r.id, fullName: r.fullName, aktif: val),
+                                        Requester(
+                                          id: r.id,
+                                          fullName: r.fullName,
+                                          aktif: val,
+                                          profileId: r.profileId,
+                                        ),
                                       );
                                   ref.invalidate(requestersProvider);
                                 },
@@ -320,32 +342,138 @@ class _RequestersTab extends ConsumerWidget {
                           ),
                       ],
                     ),
-                    onTap: duzenlenebilir ? () => _isimDuzenle(context, r.fullName, (isim) async {
-                          await ref.read(masterDataRepositoryProvider).upsertRequester(
-                                Requester(id: r.id, fullName: isim, aktif: r.aktif),
-                              );
-                          ref.invalidate(requestersProvider);
-                        }) : null,
+                    onTap: duzenlenebilir
+                        ? () => _talepEdenDialog(
+                              context,
+                              ref,
+                              requester: r,
+                              mevcutEmail: emailById[r.profileId],
+                            )
+                        : null,
                   ))
               .toList(),
         ),
         floatingActionButton: !duzenlenebilir
             ? null
             : FloatingActionButton(
-                onPressed: () => _isimEkle(
-                  context,
-                  'Yeni Talep Eden',
-                  (isim) async {
-                    await ref.read(masterDataRepositoryProvider).upsertRequester(
-                          Requester(id: _uuid.v4(), fullName: isim),
-                        );
-                    ref.invalidate(requestersProvider);
-                  },
-                ),
+                onPressed: () => _talepEdenDialog(context, ref),
                 child: const Icon(Icons.add),
               ),
       ),
     );
+  }
+
+  Future<void> _talepEdenDialog(
+    BuildContext context,
+    WidgetRef ref, {
+    Requester? requester,
+    String? mevcutEmail,
+  }) async {
+    final adController = TextEditingController(text: requester?.fullName);
+    final emailController = TextEditingController(text: mevcutEmail);
+    final sifreController = TextEditingController();
+    final hesapVar = requester?.profileId != null;
+
+    final kaydet = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(requester == null ? 'Yeni Talep Eden' : 'Talep Edeni Düzenle'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: adController,
+              decoration: const InputDecoration(labelText: 'Ad Soyad'),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: emailController,
+              decoration: InputDecoration(
+                labelText: 'E-posta (giriş için)',
+                helperText: hesapVar
+                    ? 'Bu talep edenin giriş yaptığı hesabın e-postası.'
+                    : 'Bu kişinin sisteme girip onay verebilmesi için bir hesap oluşturulur.',
+              ),
+              keyboardType: TextInputType.emailAddress,
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: sifreController,
+              decoration: InputDecoration(
+                labelText: hesapVar ? 'Yeni Şifre (opsiyonel)' : 'Şifre',
+              ),
+              obscureText: true,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('İptal')),
+          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Kaydet')),
+        ],
+      ),
+    );
+
+    if (kaydet != true) return;
+    final ad = adController.text.trim();
+    final email = emailController.text.trim();
+    final sifre = sifreController.text;
+    if (ad.isEmpty) return;
+
+    if (!hesapVar && email.isEmpty) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Yeni bir talep eden için e-posta ve şifre girmelisiniz; aksi halde bu kişi sisteme giriş yapıp onay veremez.',
+          ),
+        ),
+      );
+      return;
+    }
+    if (!hesapVar && sifre.isEmpty) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Hesap oluşturmak için şifre girmelisiniz.')),
+      );
+      return;
+    }
+
+    try {
+      final accountRepo = ref.read(accountRepositoryProvider);
+      var profileId = requester?.profileId;
+
+      if (profileId == null) {
+        profileId = await accountRepo.createAccount(
+          fullName: ad,
+          email: email,
+          password: sifre,
+          role: AppRole.office,
+        );
+      } else if (email.isNotEmpty || sifre.isNotEmpty) {
+        await accountRepo.updateAccount(
+          userId: profileId,
+          fullName: ad,
+          email: email.isEmpty ? null : email,
+          password: sifre.isEmpty ? null : sifre,
+        );
+      } else {
+        await accountRepo.updateAccount(userId: profileId, fullName: ad);
+      }
+
+      await ref.read(masterDataRepositoryProvider).upsertRequester(
+            Requester(
+              id: requester?.id ?? _uuid.v4(),
+              fullName: ad,
+              aktif: requester?.aktif ?? true,
+              profileId: profileId,
+            ),
+          );
+      ref.invalidate(requestersProvider);
+      ref.invalidate(accountsProvider);
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Hata: $e')));
+    }
   }
 }
 
@@ -441,55 +569,5 @@ class _CompaniesTab extends ConsumerWidget {
           aktif: company?.aktif ?? true,
         ));
     ref.invalidate(companiesProvider);
-  }
-}
-
-Future<void> _isimEkle(
-  BuildContext context,
-  String baslik,
-  Future<void> Function(String isim) onKaydet,
-) async {
-  final controller = TextEditingController();
-  final kaydet = await showDialog<bool>(
-    context: context,
-    builder: (context) => AlertDialog(
-      title: Text(baslik),
-      content: TextField(
-        controller: controller,
-        decoration: const InputDecoration(labelText: 'Ad Soyad'),
-      ),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('İptal')),
-        FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Kaydet')),
-      ],
-    ),
-  );
-  if (kaydet == true && controller.text.trim().isNotEmpty) {
-    await onKaydet(controller.text.trim());
-  }
-}
-
-Future<void> _isimDuzenle(
-  BuildContext context,
-  String mevcutIsim,
-  Future<void> Function(String isim) onKaydet,
-) async {
-  final controller = TextEditingController(text: mevcutIsim);
-  final kaydet = await showDialog<bool>(
-    context: context,
-    builder: (context) => AlertDialog(
-      title: const Text('Adı Düzenle'),
-      content: TextField(
-        controller: controller,
-        decoration: const InputDecoration(labelText: 'Ad Soyad'),
-      ),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('İptal')),
-        FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Kaydet')),
-      ],
-    ),
-  );
-  if (kaydet == true && controller.text.trim().isNotEmpty) {
-    await onKaydet(controller.text.trim());
   }
 }

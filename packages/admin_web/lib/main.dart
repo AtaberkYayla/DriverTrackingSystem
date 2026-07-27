@@ -60,7 +60,7 @@ class AdminWebApp extends StatelessWidget {
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      theme: ThemeData(colorSchemeSeed: Colors.indigo, useMaterial3: true),
+      theme: ThemeData(colorSchemeSeed: DedemBrand.red, useMaterial3: true),
       home: const _AuthGate(),
     );
   }

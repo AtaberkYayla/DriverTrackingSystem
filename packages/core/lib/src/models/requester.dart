@@ -8,11 +8,17 @@ class Requester {
     required this.id,
     required this.fullName,
     this.aktif = true,
+    this.profileId,
   });
 
   final String id;
   final String fullName;
   final bool aktif;
+
+  /// Bu talep edenin onay vermesi gereken hesabi (profiles.id). Sefer
+  /// listesinde Onay Verici rolundeki kullanicilar sadece kendi profileId'si
+  /// buraya baglanan talep edenlerin durak kayitlarini gorur.
+  final String? profileId;
 
   factory Requester.fromJson(Map<String, dynamic> json) => _$RequesterFromJson(json);
 

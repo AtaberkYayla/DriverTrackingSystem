@@ -1,3 +1,4 @@
+export 'src/brand.dart';
 export 'src/models/account.dart';
 export 'src/models/company.dart';
 export 'src/models/enums.dart';

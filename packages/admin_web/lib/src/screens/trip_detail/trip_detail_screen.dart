@@ -239,7 +239,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
                 items: OnayDurumu.values
                     .map((d) => DropdownMenuItem(
                           value: d,
-                          child: Text(d == OnayDurumu.onaylandi ? 'Onaylandı' : 'Beklemede'),
+                          child: Text(d == OnayDurumu.onaylandi ? 'Onaylandı' : 'Onay Bekleniyor'),
                         ))
                     .toList(),
                 onChanged: (v) => setState(() => _onayDurumu = v!),

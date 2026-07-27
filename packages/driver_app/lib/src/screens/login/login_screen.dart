@@ -1,3 +1,4 @@
+import 'package:core/core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -55,12 +56,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const Icon(Icons.local_shipping, size: 72),
+                  Image.asset(
+                    DedemBrand.faviconAssetPath,
+                    package: 'core',
+                    height: 72,
+                  ),
                   const SizedBox(height: 12),
                   Text(
-                    'Dedem Mekatronik\nŞoför Takip Sistemi',
+                    'Dedem Mekatronik',
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.headlineSmall,
+                  ),
+                  Text(
+                    'Şoför Takip Sistemi',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.bodyLarge,
                   ),
                   const SizedBox(height: 32),
                   TextFormField(

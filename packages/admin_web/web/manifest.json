@@ -1,11 +1,11 @@
 {
-    "name": "admin_web",
-    "short_name": "admin_web",
+    "name": "Dedem Mekatronik - Yönetim Paneli",
+    "short_name": "Dedem Mekatronik",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#ffffff",
+    "theme_color": "#E2111A",
+    "description": "Dedem Mekatronik Şoför Takip Sistemi - yönetim web paneli.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

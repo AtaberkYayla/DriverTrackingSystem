@@ -20,13 +20,20 @@ dependencies:
   intl: ^0.20.2
   csv: ^8.0.0
   uuid: ^4.6.0
-
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.4
 
 flutter:
   uses-material-design: true
   assets:
     - env/supabase.json
+
+flutter_launcher_icons:
+  image_path: "../core/assets/branding/dedem-favicon.png"
+  web:
+    generate: true
+    background_color: "#ffffff"
+    theme_color: "#E2111A"

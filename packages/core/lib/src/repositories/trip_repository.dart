@@ -90,6 +90,10 @@ class TripRepository {
   /// hicbir firmaya ugramamis (durak kaydi olmayan) aktif seferler de
   /// listede gorunsun; sadece onay/sefer durumu filtrelendiginde (bu
   /// alanlar durak bazinda oldugundan) durak zorunlu hale gelir.
+  /// [allowedRequesterIds] verildiginde (Onay Verici rolu icin), sadece bu
+  /// talep edenlere ait durak kayitlari donulur; durak kaydi olmayan (henuz
+  /// hicbir firmaya ugramamis) seferler de bu durumda listeden cikarilir
+  /// zira henuz kimin onay verecegi belli degildir.
   Future<List<TripStopWithTrip>> fetchAllStopsWithTrip({
     String? driverId,
     String? vehicleId,
@@ -97,6 +101,7 @@ class TripRepository {
     SeferDurumu? seferDurumu,
     DateTime? baslangic,
     DateTime? bitis,
+    List<String>? allowedRequesterIds,
     int limit = 500,
   }) async {
     final stopFiltresiVar = onayDurumu != null || seferDurumu != null;
@@ -115,7 +120,7 @@ class TripRepository {
     for (final row in rows) {
       final tripJson = Map<String, dynamic>.from(row)..remove('trip_stops');
       final trip = Trip.fromJson(tripJson);
-      final stopRows = (row['trip_stops'] as List).cast<Map<String, dynamic>>();
+      final stopRows = (row['trip_stops'] as List? ?? []).cast<Map<String, dynamic>>();
       if (stopRows.isEmpty) {
         results.add(TripStopWithTrip(trip: trip));
       } else {
@@ -130,6 +135,10 @@ class TripRepository {
       if (vehicleId != null && r.trip.vehicleId != vehicleId) return false;
       if (baslangic != null && r.trip.tarih.compareTo(_dateStr(baslangic)) < 0) return false;
       if (bitis != null && r.trip.tarih.compareTo(_dateStr(bitis)) > 0) return false;
+      if (allowedRequesterIds != null &&
+          (r.stop == null || !allowedRequesterIds.contains(r.stop!.requesterId))) {
+        return false;
+      }
       return true;
     }).toList();
   }
@@ -142,15 +151,19 @@ class TripRepository {
     required SeferDurumu seferDurumu,
     String? notlar,
   }) async {
+    final payload = {
+      'onay_durumu': onayDurumu.toJson(),
+      'onaylayan_id': onaylayanId,
+      'onaylandi_at': DateTime.now().toIso8601String(),
+      'sefer_durumu': seferDurumu.toJson(),
+    };
+    if (notlar != null) {
+      payload['notlar'] = notlar;
+    }
+
     final row = await supabase
         .from('trip_stops')
-        .update({
-          'onay_durumu': onayDurumu.toJson(),
-          'onaylayan_id': onaylayanId,
-          'onaylandi_at': DateTime.now().toIso8601String(),
-          'sefer_durumu': seferDurumu.toJson(),
-          if (notlar != null) 'notlar': notlar,
-        })
+        .update(payload)
         .eq('id', stopId)
         .select()
         .single();

@@ -58,7 +58,7 @@ class AccountsScreen extends ConsumerWidget {
                             children: [
                               Switch(
                                 value: acc.aktif,
-                                onChanged: !duzenlenebilir
+                                onChanged: (!duzenlenebilir || kendiHesabi)
                                     ? null
                                     : (val) async {
                                         await ref

@@ -92,6 +92,9 @@ class CompaniesCache extends Table {
   TextColumn get id => text()();
   TextColumn get name => text()();
   TextColumn get sehir => text().nullable()();
+
+  /// Virgulle ayrilmis trip_type id listesi (bos string = hic kategorisi yok).
+  TextColumn get tripTypeIds => text().withDefault(const Constant(''))();
   BoolColumn get aktif => boolean().withDefault(const Constant(true))();
 
   @override
@@ -117,7 +120,7 @@ class AppDatabase extends _$AppDatabase {
         ));
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(

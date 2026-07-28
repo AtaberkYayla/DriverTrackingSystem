@@ -27,6 +27,9 @@ class _ActiveTripScreenState extends ConsumerState<ActiveTripScreen> {
   @override
   Widget build(BuildContext context) {
     final profileAsync = ref.watch(currentProfileProvider);
+    // Canli harita takibi icin periyodik konum gonderimini baslatir (bkz.
+    // LocationService) - oturum acikken sadece bir kez olusturulup calisir.
+    ref.watch(locationServiceProvider);
 
     return Scaffold(
       appBar: AppBar(

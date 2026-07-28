@@ -48,7 +48,13 @@ $accounts = [
 ];
 
 // Giris hesabi OLMAYACAK, sadece Talep Eden (Onay Verici) master verisi.
+// 4 yonetici de (giris hesaplarina ek olarak) Talep Eden olarak eklenir -
+// kendi adlarina sefer talebi/onayi da gorunebilsin diye.
 $requesterNames = [
+    'Anıl Bulut',
+    'Koray Mete',
+    'Sercan Karataş',
+    'Kübra Ezgi Şen',
     'Hande Ankacık',
     'Merve Akar',
     'Radina Mardanova',
@@ -127,7 +133,10 @@ $plakalar = [
     '35 CAS 890', '35 CAS 892', '35 CAS 893', '35 CAS 891', '34 GPL 593',
     '34 HFP 784', '34 HFP 916', '34 KIR 166', '34 KTJ 245', '34 KTJ 047',
     '34 GZL 323', '34 GZL 146', '34 GPF 478', '34 GZL 351', '34 HFP 795',
-    '34 KSP 962', '34 KLF 899',
+    '34 KSP 962', '34 KLF 899', '34 GHA 824', '34 GHA 949', '34 GZL 164',
+    '34 GPK 920', '34 GPF 533', '34 HFP 802', '34 GPK 968', '34 KKS 607',
+    '16 AEH 50', '35 YV 708', '35 GC 6408', '35 GE 5813', '35 BYM 432',
+    '35 D 3406', '45 AHD 785', '35 BSN 537', '35 TMC 65', '35 ANM 744',
 ];
 
 $insertVehicle = $pdo->prepare('INSERT INTO vehicles (id, plaka, aktif) VALUES (?, ?, 1)');
@@ -223,17 +232,76 @@ $sirketler = [
     'BOLEM ELEKTRIK VE ELEKTRONİK SAN. VE TİC. A.Ş.',
 ];
 
+// Bankalar - eskiden driver_app icinde sabit kodlu bir listeydi, artik
+// Master Veri Yonetimi > Sirketler ekranindan yonetilebilmesi icin "Banka"
+// kategorisiyle etiketlenmis sirket kaydi olarak eklenir.
+$bankalar = [
+    'Garanti Bankası',
+    'QNB Bank A.Ş.',
+    'Yapı ve Kredi Bankası',
+    'Türkiye Halk Bankası A.Ş.',
+    'Vakıfbank',
+    'Ziraat Bankası',
+    'Albarakatürk',
+    'Akbank',
+    'Türk Ekonomi Bankası',
+    'Şeker Bank',
+    'Denizbank',
+    'Anadolu Bank',
+    'İş Bankası',
+    'Türkiye Finans Katılım Bankası',
+    'Vakıf Katılım Bankası',
+    'Ziraat Katılım Bankası',
+    'Odea Bank',
+    'Emlak Katılım',
+    'ING Bank',
+    'Exim Bank',
+    'KuveytTürk',
+    'Türk Ticaret Bankası',
+    'Dünya Katılım Bankası',
+];
+
 $insertCompany = $pdo->prepare('INSERT INTO companies (id, name, aktif) VALUES (?, ?, 1)');
 $companyExists = $pdo->prepare('SELECT id FROM companies WHERE name = ?');
+$linkCompanyTripType = $pdo->prepare(
+    'INSERT IGNORE INTO company_trip_types (company_id, trip_type_id) VALUES (?, ?)'
+);
+
+// Irsaliyeli 3 sefer turu (Satin Alma/Fason/Uretim Sevkiyati) - genel sirket
+// listesi bu ucunde birden gorunur.
+$irsaliyeliTurIdleri = $pdo->query(
+    "SELECT id FROM trip_types WHERE code IN ('SATIN_ALMA_SEVKIYATI', 'FASON_SEVKIYAT', 'URETIM_SEVKIYATI')"
+)->fetchAll(PDO::FETCH_COLUMN);
+$bankaTuruId = $pdo->prepare('SELECT id FROM trip_types WHERE code = ?');
+$bankaTuruId->execute(['BANKA']);
+$bankaTuruId = $bankaTuruId->fetchColumn();
 
 $sirketSayisi = 0;
 foreach ($sirketler as $name) {
     $companyExists->execute([$name]);
-    if ($companyExists->fetch() !== false) {
-        continue;
+    $existing = $companyExists->fetch();
+    $companyId = $existing !== false ? $existing['id'] : uuidv4();
+    if ($existing === false) {
+        $insertCompany->execute([$companyId, $name]);
+        $sirketSayisi++;
     }
-    $insertCompany->execute([uuidv4(), $name]);
-    $sirketSayisi++;
+    foreach ($irsaliyeliTurIdleri as $tripTypeId) {
+        $linkCompanyTripType->execute([$companyId, $tripTypeId]);
+    }
+}
+
+$bankaSayisi = 0;
+foreach ($bankalar as $name) {
+    $companyExists->execute([$name]);
+    $existing = $companyExists->fetch();
+    $companyId = $existing !== false ? $existing['id'] : uuidv4();
+    if ($existing === false) {
+        $insertCompany->execute([$companyId, $name]);
+        $bankaSayisi++;
+    }
+    if ($bankaTuruId !== false) {
+        $linkCompanyTripType->execute([$companyId, $bankaTuruId]);
+    }
 }
 
 echo "Tamamlandi.\n";
@@ -244,4 +312,5 @@ echo "Talep Edenler ekranindan tek tek girmeniz gerekiyor).\n";
 echo "Yeni eklenen arac sayisi: $aracSayisi\n";
 echo "Yeni eklenen seyahat turu sayisi: $turSayisi\n";
 echo "Yeni eklenen sirket sayisi: $sirketSayisi\n";
+echo "Yeni eklenen banka sayisi: $bankaSayisi\n";
 echo "GUVENLIK: Bu dosyayi (scripts_seed.php) calistirdiktan sonra Hestia Dosya Yoneticisi'nden SILIN.\n";

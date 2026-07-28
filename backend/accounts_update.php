@@ -17,6 +17,10 @@ if ($current === false) {
     json_error('not_found', 'Hesap bulunamadı', 404);
 }
 
+if ($userId === $user['id'] && array_key_exists('aktif', $body) && !(bool) $body['aktif']) {
+    json_error('invalid_request', 'Kendi hesabınızı pasife alamazsınız', 422);
+}
+
 $newRole = $body['role'] ?? null;
 $touchesManagerAdmin = in_array($current['role'], ['manager', 'admin'], true)
     || ($newRole !== null && in_array($newRole, ['manager', 'admin'], true));

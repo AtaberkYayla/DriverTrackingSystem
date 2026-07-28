@@ -51,6 +51,17 @@ CREATE TABLE IF NOT EXISTS companies (
   aktif TINYINT(1) NOT NULL DEFAULT 1
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- Bir sirket birden fazla sefer turu (kategori) altinda gorunebilir -
+-- ornegin mevcut 65 sirket Satin Alma/Fason/Uretim Sevkiyati'nin ucunde de
+-- listelenir, bir kargo firmasi ise sadece Kargo turunde listelenebilir.
+CREATE TABLE IF NOT EXISTS company_trip_types (
+  company_id CHAR(36) NOT NULL,
+  trip_type_id CHAR(36) NOT NULL,
+  PRIMARY KEY (company_id, trip_type_id),
+  CONSTRAINT fk_ctt_company FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE,
+  CONSTRAINT fk_ctt_trip_type FOREIGN KEY (trip_type_id) REFERENCES trip_types(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 -- Talep Eden'in (Onay Verici) giris hesabi yoktur; onay/bildirim maili
 -- dogrudan `email`e gonderilir, mailin icindeki tek-tikla "Onayla" linki
 -- approval_tokens tablosundaki bir token ile calisir (bkz. approvals_approve.php).
@@ -153,6 +164,17 @@ CREATE TABLE IF NOT EXISTS approval_tokens (
   used_at DATETIME NULL,
   CONSTRAINT fk_approval_tokens_stop FOREIGN KEY (stop_id) REFERENCES trip_stops(id) ON DELETE CASCADE,
   INDEX idx_approval_tokens_stop (stop_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Her sofor icin en son bilinen konum (canli harita takibi - admin_web).
+-- Sadece "su an neredeler" gosterilir, gecmis rota tutulmaz; driver_app
+-- uygulama acikken periyodik olarak bu satiri upsert eder.
+CREATE TABLE IF NOT EXISTS driver_locations (
+  driver_id CHAR(36) NOT NULL PRIMARY KEY,
+  lat DOUBLE NOT NULL,
+  lng DOUBLE NOT NULL,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT fk_driver_locations_user FOREIGN KEY (driver_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 SET FOREIGN_KEY_CHECKS = 1;

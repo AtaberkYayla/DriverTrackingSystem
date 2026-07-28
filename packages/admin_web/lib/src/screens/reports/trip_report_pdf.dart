@@ -30,6 +30,18 @@ class _TripGroup {
   final List<TripStop> stops;
 }
 
+/// Bir sefer grubunun siralama icin kullanilacak en erken zaman damgasi:
+/// once Fabrika Cikis, o yoksa en erken durak Girisi, o da yoksa Fabrika
+/// Giris. Hicbiri yoksa (henuz hicbir olay islenmemis) null doner ve sadece
+/// tarih alanina gore siralanir.
+DateTime? _erkenZaman(_TripGroup grup) {
+  if (grup.trip.fabrikaCikisAt != null) return grup.trip.fabrikaCikisAt;
+  if (grup.stops.isNotEmpty) {
+    return grup.stops.map((s) => s.firmaGirisAt).reduce((a, b) => a.isBefore(b) ? a : b);
+  }
+  return grup.trip.fabrikaGirisAt;
+}
+
 List<_TripGroup> _grupla(List<TripStopWithTrip> rows) {
   final gruplar = <String, _TripGroup>{};
   final sira = <String>[];
@@ -42,7 +54,17 @@ List<_TripGroup> _grupla(List<TripStopWithTrip> rows) {
   }
   final liste = [for (final id in sira) gruplar[id]!];
   // Canli ekrandan farkli olarak rapor kronolojik (eskiden yeniye) okunsun.
-  liste.sort((a, b) => a.trip.tarih.compareTo(b.trip.tarih));
+  // Ayni gundeki seferler arasinda da saatine gore (erkenden gece) siralanir.
+  liste.sort((a, b) {
+    final tarihFarki = a.trip.tarih.compareTo(b.trip.tarih);
+    if (tarihFarki != 0) return tarihFarki;
+    final zamanA = _erkenZaman(a);
+    final zamanB = _erkenZaman(b);
+    if (zamanA == null && zamanB == null) return 0;
+    if (zamanA == null) return -1;
+    if (zamanB == null) return 1;
+    return zamanA.compareTo(zamanB);
+  });
   return liste;
 }
 

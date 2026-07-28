@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../local/app_database.dart';
 import '../local/local_store.dart';
+import '../location/location_service.dart';
 import '../sync/sync_service.dart';
 
 final appDatabaseProvider = Provider<AppDatabase>((ref) {
@@ -21,6 +22,17 @@ final tripRepositoryProvider = Provider<TripRepository>((ref) => TripRepository(
 
 final masterDataRepositoryProvider =
     Provider<MasterDataRepository>((ref) => MasterDataRepository());
+
+final locationRepositoryProvider = Provider<LocationRepository>((ref) => LocationRepository());
+
+/// Ilk okundugunda periyodik konum gonderimini baslatir (bkz. LocationService) -
+/// tetikleme noktasi icin ActiveTripScreen'deki ref.watch(locationServiceProvider).
+final locationServiceProvider = Provider<LocationService>((ref) {
+  final service = LocationService(locationRepository: ref.watch(locationRepositoryProvider));
+  service.start();
+  ref.onDispose(service.dispose);
+  return service;
+});
 
 final syncServiceProvider = Provider<SyncService>((ref) {
   final service = SyncService(

@@ -45,33 +45,6 @@ const _izinVerilenIller = <String>[
   'Tekirdağ',
 ];
 
-/// "Banka" sefer turu secildiginde "Gidilen Sirket / Yer" alaninda onerilecek
-/// banka listesi - listede yoksa yine serbest metin olarak yazilabilir.
-const _bankalar = <String>[
-  'Garanti Bankası',
-  'QNB Bank A.Ş.',
-  'Yapı ve Kredi Bankası',
-  'Türkiye Halk Bankası A.Ş.',
-  'Vakıfbank',
-  'Ziraat Bankası',
-  'Albarakatürk',
-  'Akbank',
-  'Türk Ekonomi Bankası',
-  'Şeker Bank',
-  'Denizbank',
-  'Anadolu Bank',
-  'İş Bankası',
-  'Türkiye Finans Katılım Bankası',
-  'Vakıf Katılım Bankası',
-  'Ziraat Katılım Bankası',
-  'Odea Bank',
-  'Emlak Katılım',
-  'ING Bank',
-  'Exim Bank',
-  'KuveytTürk',
-  'Türk Ticaret Bankası',
-  'Dünya Katılım Bankası',
-];
 
 Future<TripDetailFormResult?> showTripDetailForm(BuildContext context) {
   return Navigator.of(context).push<TripDetailFormResult>(
@@ -266,16 +239,17 @@ class _TripDetailFormScreenState extends ConsumerState<TripDetailFormScreen> {
                     ),
                 ],
                 const SizedBox(height: 16),
-                if (_seciliTur?.requiresIrsaliye ?? false)
+                if (_sirketAutocompleteGosterilsinMi(companiesAsync))
                   companiesAsync.when(
                     loading: () => const LinearProgressIndicator(),
                     error: (e, _) => Text('Şirketler yüklenemedi: $e'),
                     data: (companies) => Autocomplete<CompaniesCacheData>(
                       displayStringForOption: (c) => c.name,
                       optionsBuilder: (value) {
-                        if (value.text.isEmpty) return companies;
+                        final kategoriye = _turUyumluSirketler(companies);
+                        if (value.text.isEmpty) return kategoriye;
                         final q = value.text.toLowerCase();
-                        return companies.where((c) => c.name.toLowerCase().contains(q));
+                        return kategoriye.where((c) => c.name.toLowerCase().contains(q));
                       },
                       optionsViewBuilder: (context, onSelected, options) => buildAutocompleteOptionsView(
                         options: options,
@@ -287,13 +261,14 @@ class _TripDetailFormScreenState extends ConsumerState<TripDetailFormScreen> {
                         _sirketController.text = c.name;
                       }),
                       fieldViewBuilder: (context, controller, focusNode, onSubmit) {
+                        final bankaMi = _seciliTur?.code == 'BANKA';
                         return TextFormField(
                           controller: controller,
                           focusNode: focusNode,
-                          decoration: const InputDecoration(
-                            labelText: 'Gidilen Şirket',
+                          decoration: InputDecoration(
+                            labelText: bankaMi ? 'Gidilen Banka' : 'Gidilen Şirket',
                             helperText: 'Listede yoksa serbest metin olarak yazabilirsiniz',
-                            border: OutlineInputBorder(),
+                            border: const OutlineInputBorder(),
                           ),
                           onChanged: (v) {
                             _sirketController.text = v;
@@ -301,40 +276,12 @@ class _TripDetailFormScreenState extends ConsumerState<TripDetailFormScreen> {
                               _seciliSirket = null;
                             }
                           },
-                          validator: (v) =>
-                              (v == null || v.trim().isEmpty) ? 'Gidilen şirket giriniz' : null,
+                          validator: (v) => (v == null || v.trim().isEmpty)
+                              ? (bankaMi ? 'Gidilen banka giriniz' : 'Gidilen şirket giriniz')
+                              : null,
                         );
                       },
                     ),
-                  )
-                else if (_seciliTur?.code == 'BANKA')
-                  Autocomplete<String>(
-                    optionsBuilder: (value) {
-                      if (value.text.isEmpty) return _bankalar;
-                      final q = value.text.toLowerCase();
-                      return _bankalar.where((b) => b.toLowerCase().contains(q));
-                    },
-                    optionsViewBuilder: (context, onSelected, options) => buildAutocompleteOptionsView(
-                      options: options,
-                      onSelected: onSelected,
-                      displayStringForOption: RawAutocomplete.defaultStringForOption,
-                    ),
-                    onSelected: (b) => _sirketController.text = b,
-                    fieldViewBuilder: (context, controller, focusNode, onSubmit) {
-                      controller.text = _sirketController.text;
-                      return TextFormField(
-                        controller: controller,
-                        focusNode: focusNode,
-                        decoration: const InputDecoration(
-                          labelText: 'Gidilen Banka',
-                          helperText: 'Listede yoksa serbest metin olarak yazabilirsiniz',
-                          border: OutlineInputBorder(),
-                        ),
-                        onChanged: (v) => _sirketController.text = v,
-                        validator: (v) =>
-                            (v == null || v.trim().isEmpty) ? 'Gidilen banka giriniz' : null,
-                      );
-                    },
                   )
                 else
                   TextFormField(
@@ -380,6 +327,27 @@ class _TripDetailFormScreenState extends ConsumerState<TripDetailFormScreen> {
         },
       ),
     );
+  }
+
+  bool _sirketKategoriUyumlu(CompaniesCacheData c, String turId) =>
+      c.tripTypeIds.split(',').contains(turId);
+
+  /// Bir sirket firma-otomatik-tamamlama alaninin gosterilip gosterilmeyecegini
+  /// belirler: secili sefer turu icin kategorize edilmis en az bir sirket varsa
+  /// (irsaliye gerektiren turlerde her zaman en az biri olmasi beklenir).
+  bool _sirketAutocompleteGosterilsinMi(AsyncValue<List<CompaniesCacheData>> companiesAsync) {
+    final tur = _seciliTur;
+    if (tur == null) return false;
+    if (tur.requiresIrsaliye) return true;
+    final companies = companiesAsync.value;
+    return companies != null && companies.any((c) => _sirketKategoriUyumlu(c, tur.id));
+  }
+
+  /// Secili sefer turune (kategoriye) etiketlenmis sirketleri filtreler.
+  List<CompaniesCacheData> _turUyumluSirketler(List<CompaniesCacheData> companies) {
+    final tur = _seciliTur;
+    if (tur == null) return const [];
+    return companies.where((c) => _sirketKategoriUyumlu(c, tur.id)).toList();
   }
 
   void _kaydet() {

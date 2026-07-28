@@ -2882,6 +2882,18 @@ class $CompaniesCacheTable extends CompaniesCache
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _tripTypeIdsMeta = const VerificationMeta(
+    'tripTypeIds',
+  );
+  @override
+  late final GeneratedColumn<String> tripTypeIds = GeneratedColumn<String>(
+    'trip_type_ids',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
   static const VerificationMeta _aktifMeta = const VerificationMeta('aktif');
   @override
   late final GeneratedColumn<bool> aktif = GeneratedColumn<bool>(
@@ -2896,7 +2908,7 @@ class $CompaniesCacheTable extends CompaniesCache
     defaultValue: const Constant(true),
   );
   @override
-  List<GeneratedColumn> get $columns => [id, name, sehir, aktif];
+  List<GeneratedColumn> get $columns => [id, name, sehir, tripTypeIds, aktif];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -2928,6 +2940,15 @@ class $CompaniesCacheTable extends CompaniesCache
         sehir.isAcceptableOrUnknown(data['sehir']!, _sehirMeta),
       );
     }
+    if (data.containsKey('trip_type_ids')) {
+      context.handle(
+        _tripTypeIdsMeta,
+        tripTypeIds.isAcceptableOrUnknown(
+          data['trip_type_ids']!,
+          _tripTypeIdsMeta,
+        ),
+      );
+    }
     if (data.containsKey('aktif')) {
       context.handle(
         _aktifMeta,
@@ -2955,6 +2976,10 @@ class $CompaniesCacheTable extends CompaniesCache
         DriftSqlType.string,
         data['${effectivePrefix}sehir'],
       ),
+      tripTypeIds: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}trip_type_ids'],
+      )!,
       aktif: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}aktif'],
@@ -2973,11 +2998,15 @@ class CompaniesCacheData extends DataClass
   final String id;
   final String name;
   final String? sehir;
+
+  /// Virgulle ayrilmis trip_type id listesi (bos string = hic kategorisi yok).
+  final String tripTypeIds;
   final bool aktif;
   const CompaniesCacheData({
     required this.id,
     required this.name,
     this.sehir,
+    required this.tripTypeIds,
     required this.aktif,
   });
   @override
@@ -2988,6 +3017,7 @@ class CompaniesCacheData extends DataClass
     if (!nullToAbsent || sehir != null) {
       map['sehir'] = Variable<String>(sehir);
     }
+    map['trip_type_ids'] = Variable<String>(tripTypeIds);
     map['aktif'] = Variable<bool>(aktif);
     return map;
   }
@@ -2999,6 +3029,7 @@ class CompaniesCacheData extends DataClass
       sehir: sehir == null && nullToAbsent
           ? const Value.absent()
           : Value(sehir),
+      tripTypeIds: Value(tripTypeIds),
       aktif: Value(aktif),
     );
   }
@@ -3012,6 +3043,7 @@ class CompaniesCacheData extends DataClass
       id: serializer.fromJson<String>(json['id']),
       name: serializer.fromJson<String>(json['name']),
       sehir: serializer.fromJson<String?>(json['sehir']),
+      tripTypeIds: serializer.fromJson<String>(json['tripTypeIds']),
       aktif: serializer.fromJson<bool>(json['aktif']),
     );
   }
@@ -3022,6 +3054,7 @@ class CompaniesCacheData extends DataClass
       'id': serializer.toJson<String>(id),
       'name': serializer.toJson<String>(name),
       'sehir': serializer.toJson<String?>(sehir),
+      'tripTypeIds': serializer.toJson<String>(tripTypeIds),
       'aktif': serializer.toJson<bool>(aktif),
     };
   }
@@ -3030,11 +3063,13 @@ class CompaniesCacheData extends DataClass
     String? id,
     String? name,
     Value<String?> sehir = const Value.absent(),
+    String? tripTypeIds,
     bool? aktif,
   }) => CompaniesCacheData(
     id: id ?? this.id,
     name: name ?? this.name,
     sehir: sehir.present ? sehir.value : this.sehir,
+    tripTypeIds: tripTypeIds ?? this.tripTypeIds,
     aktif: aktif ?? this.aktif,
   );
   CompaniesCacheData copyWithCompanion(CompaniesCacheCompanion data) {
@@ -3042,6 +3077,9 @@ class CompaniesCacheData extends DataClass
       id: data.id.present ? data.id.value : this.id,
       name: data.name.present ? data.name.value : this.name,
       sehir: data.sehir.present ? data.sehir.value : this.sehir,
+      tripTypeIds: data.tripTypeIds.present
+          ? data.tripTypeIds.value
+          : this.tripTypeIds,
       aktif: data.aktif.present ? data.aktif.value : this.aktif,
     );
   }
@@ -3052,13 +3090,14 @@ class CompaniesCacheData extends DataClass
           ..write('id: $id, ')
           ..write('name: $name, ')
           ..write('sehir: $sehir, ')
+          ..write('tripTypeIds: $tripTypeIds, ')
           ..write('aktif: $aktif')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, name, sehir, aktif);
+  int get hashCode => Object.hash(id, name, sehir, tripTypeIds, aktif);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -3066,6 +3105,7 @@ class CompaniesCacheData extends DataClass
           other.id == this.id &&
           other.name == this.name &&
           other.sehir == this.sehir &&
+          other.tripTypeIds == this.tripTypeIds &&
           other.aktif == this.aktif);
 }
 
@@ -3073,12 +3113,14 @@ class CompaniesCacheCompanion extends UpdateCompanion<CompaniesCacheData> {
   final Value<String> id;
   final Value<String> name;
   final Value<String?> sehir;
+  final Value<String> tripTypeIds;
   final Value<bool> aktif;
   final Value<int> rowid;
   const CompaniesCacheCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
     this.sehir = const Value.absent(),
+    this.tripTypeIds = const Value.absent(),
     this.aktif = const Value.absent(),
     this.rowid = const Value.absent(),
   });
@@ -3086,6 +3128,7 @@ class CompaniesCacheCompanion extends UpdateCompanion<CompaniesCacheData> {
     required String id,
     required String name,
     this.sehir = const Value.absent(),
+    this.tripTypeIds = const Value.absent(),
     this.aktif = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
@@ -3094,6 +3137,7 @@ class CompaniesCacheCompanion extends UpdateCompanion<CompaniesCacheData> {
     Expression<String>? id,
     Expression<String>? name,
     Expression<String>? sehir,
+    Expression<String>? tripTypeIds,
     Expression<bool>? aktif,
     Expression<int>? rowid,
   }) {
@@ -3101,6 +3145,7 @@ class CompaniesCacheCompanion extends UpdateCompanion<CompaniesCacheData> {
       if (id != null) 'id': id,
       if (name != null) 'name': name,
       if (sehir != null) 'sehir': sehir,
+      if (tripTypeIds != null) 'trip_type_ids': tripTypeIds,
       if (aktif != null) 'aktif': aktif,
       if (rowid != null) 'rowid': rowid,
     });
@@ -3110,6 +3155,7 @@ class CompaniesCacheCompanion extends UpdateCompanion<CompaniesCacheData> {
     Value<String>? id,
     Value<String>? name,
     Value<String?>? sehir,
+    Value<String>? tripTypeIds,
     Value<bool>? aktif,
     Value<int>? rowid,
   }) {
@@ -3117,6 +3163,7 @@ class CompaniesCacheCompanion extends UpdateCompanion<CompaniesCacheData> {
       id: id ?? this.id,
       name: name ?? this.name,
       sehir: sehir ?? this.sehir,
+      tripTypeIds: tripTypeIds ?? this.tripTypeIds,
       aktif: aktif ?? this.aktif,
       rowid: rowid ?? this.rowid,
     );
@@ -3134,6 +3181,9 @@ class CompaniesCacheCompanion extends UpdateCompanion<CompaniesCacheData> {
     if (sehir.present) {
       map['sehir'] = Variable<String>(sehir.value);
     }
+    if (tripTypeIds.present) {
+      map['trip_type_ids'] = Variable<String>(tripTypeIds.value);
+    }
     if (aktif.present) {
       map['aktif'] = Variable<bool>(aktif.value);
     }
@@ -3149,6 +3199,7 @@ class CompaniesCacheCompanion extends UpdateCompanion<CompaniesCacheData> {
           ..write('id: $id, ')
           ..write('name: $name, ')
           ..write('sehir: $sehir, ')
+          ..write('tripTypeIds: $tripTypeIds, ')
           ..write('aktif: $aktif, ')
           ..write('rowid: $rowid')
           ..write(')'))
@@ -4613,6 +4664,7 @@ typedef $$CompaniesCacheTableCreateCompanionBuilder =
       required String id,
       required String name,
       Value<String?> sehir,
+      Value<String> tripTypeIds,
       Value<bool> aktif,
       Value<int> rowid,
     });
@@ -4621,6 +4673,7 @@ typedef $$CompaniesCacheTableUpdateCompanionBuilder =
       Value<String> id,
       Value<String> name,
       Value<String?> sehir,
+      Value<String> tripTypeIds,
       Value<bool> aktif,
       Value<int> rowid,
     });
@@ -4646,6 +4699,11 @@ class $$CompaniesCacheTableFilterComposer
 
   ColumnFilters<String> get sehir => $composableBuilder(
     column: $table.sehir,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get tripTypeIds => $composableBuilder(
+    column: $table.tripTypeIds,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -4679,6 +4737,11 @@ class $$CompaniesCacheTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get tripTypeIds => $composableBuilder(
+    column: $table.tripTypeIds,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<bool> get aktif => $composableBuilder(
     column: $table.aktif,
     builder: (column) => ColumnOrderings(column),
@@ -4702,6 +4765,11 @@ class $$CompaniesCacheTableAnnotationComposer
 
   GeneratedColumn<String> get sehir =>
       $composableBuilder(column: $table.sehir, builder: (column) => column);
+
+  GeneratedColumn<String> get tripTypeIds => $composableBuilder(
+    column: $table.tripTypeIds,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<bool> get aktif =>
       $composableBuilder(column: $table.aktif, builder: (column) => column);
@@ -4747,12 +4815,14 @@ class $$CompaniesCacheTableTableManager
                 Value<String> id = const Value.absent(),
                 Value<String> name = const Value.absent(),
                 Value<String?> sehir = const Value.absent(),
+                Value<String> tripTypeIds = const Value.absent(),
                 Value<bool> aktif = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => CompaniesCacheCompanion(
                 id: id,
                 name: name,
                 sehir: sehir,
+                tripTypeIds: tripTypeIds,
                 aktif: aktif,
                 rowid: rowid,
               ),
@@ -4761,12 +4831,14 @@ class $$CompaniesCacheTableTableManager
                 required String id,
                 required String name,
                 Value<String?> sehir = const Value.absent(),
+                Value<String> tripTypeIds = const Value.absent(),
                 Value<bool> aktif = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => CompaniesCacheCompanion.insert(
                 id: id,
                 name: name,
                 sehir: sehir,
+                tripTypeIds: tripTypeIds,
                 aktif: aktif,
                 rowid: rowid,
               ),

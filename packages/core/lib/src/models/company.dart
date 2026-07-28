@@ -8,12 +8,14 @@ class Company {
     required this.id,
     required this.name,
     this.sehir,
+    this.tripTypeIds = const [],
     this.aktif = true,
   });
 
   final String id;
   final String name;
   final String? sehir;
+  final List<String> tripTypeIds;
   final bool aktif;
 
   factory Company.fromJson(Map<String, dynamic> json) => _$CompanyFromJson(json);

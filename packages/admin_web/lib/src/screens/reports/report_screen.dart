@@ -186,9 +186,16 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
                         return Center(child: Text('Rapor oluşturulamadı: ${snapshot.error}'));
                       }
                       return PdfPreview(
-                        build: (format) async => snapshot.data!,
+                        // PdfPreview PDF baytlarini web'de bir Worker'a "transfer"
+                        // ederek gonderiyor (kopyalamadan) - ayni Uint8List'i
+                        // birden fazla kez dondurmek (ornegin paylas/indir veya
+                        // yazdirma tekrar cagirdiginda) ikinci seferde tarayicida
+                        // "ArrayBuffer is detached" hatasina yol aciyordu. Her
+                        // cagrida taze bir kopya vererek bunu onluyoruz.
+                        build: (format) async => Uint8List.fromList(snapshot.data!),
                         canChangePageFormat: false,
                         canChangeOrientation: false,
+                        canDebug: false,
                         pdfFileName: 'sefer-raporu.pdf',
                       );
                     },

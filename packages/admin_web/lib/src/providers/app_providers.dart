@@ -14,6 +14,8 @@ final accountRepositoryProvider = Provider<AccountRepository>((ref) => AccountRe
 final mailSettingsRepositoryProvider =
     Provider<MailSettingsRepository>((ref) => MailSettingsRepository());
 
+final locationRepositoryProvider = Provider<LocationRepository>((ref) => LocationRepository());
+
 final authStateChangesProvider = StreamProvider<AuthState>((ref) {
   return ref.watch(authRepositoryProvider).onAuthStateChange;
 });
@@ -154,6 +156,13 @@ final tripListProvider = FutureProvider.autoDispose<List<TripStopWithTrip>>((ref
 
 final mailSettingsProvider = FutureProvider<MailSettings>((ref) {
   return ref.watch(mailSettingsRepositoryProvider).fetch();
+});
+
+/// Canli harita ekrani icin - ayni 6 saniyelik polling ritmini kullanir
+/// (bkz. autoRefreshTickProvider).
+final driverLocationsProvider = FutureProvider.autoDispose<List<DriverLocation>>((ref) {
+  ref.watch(autoRefreshTickProvider);
+  return ref.watch(locationRepositoryProvider).fetchDriverLocations();
 });
 
 final allDriversProvider = FutureProvider<List<Profile>>((ref) async {

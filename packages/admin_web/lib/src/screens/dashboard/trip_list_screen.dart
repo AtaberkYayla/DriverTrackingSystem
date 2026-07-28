@@ -4,11 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../providers/app_providers.dart';
-import '../accounts/accounts_screen.dart';
-import '../mail_settings/mail_settings_screen.dart';
-import '../master_data/master_data_screen.dart';
-import '../profile/my_profile_screen.dart';
-import '../reports/report_screen.dart';
 import '../trip_detail/trip_detail_screen.dart';
 
 class TripListScreen extends ConsumerWidget {
@@ -19,9 +14,6 @@ class TripListScreen extends ConsumerWidget {
     final tripsAsync = ref.watch(tripListProvider);
     final refDataAsync = ref.watch(referenceDataProvider);
     final dateFormat = DateFormat('dd.MM.yyyy HH:mm');
-    final isManagerOrAdmin = ref.watch(isManagerOrAdminProvider);
-    final isManager = ref.watch(isManagerProvider);
-    final isAdmin = ref.watch(isAdminProvider);
 
     // Onceki basariyla yuklenen veriyi elde tutup sadece arka planda tazeler;
     // boylece 1 dakikalik otomatik yenilemede tum liste CircularProgressIndicator
@@ -60,52 +52,6 @@ class TripListScreen extends ConsumerWidget {
             const Text('Seferler'),
           ],
         ),
-        actions: [
-          if (isManagerOrAdmin)
-            IconButton(
-              icon: const Icon(Icons.people_outline),
-              tooltip: 'Kullanıcılar',
-              onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const AccountsScreen()),
-              ),
-            ),
-          if (!isManager)
-            IconButton(
-              icon: const Icon(Icons.storage_outlined),
-              tooltip: 'Master Veri Yönetimi',
-              onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const MasterDataScreen()),
-              ),
-            ),
-          if (isAdmin)
-            IconButton(
-              icon: const Icon(Icons.mail_outline),
-              tooltip: 'Mail Ayarları',
-              onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const MailSettingsScreen()),
-              ),
-            ),
-          if (isManagerOrAdmin)
-            IconButton(
-              icon: const Icon(Icons.description_outlined),
-              tooltip: 'Sefer Raporu',
-              onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const ReportScreen()),
-              ),
-            ),
-          IconButton(
-            icon: const Icon(Icons.person_outline),
-            tooltip: 'Profilim',
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const MyProfileScreen()),
-            ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.logout),
-            tooltip: 'Çıkış Yap',
-            onPressed: () => ref.read(authRepositoryProvider).signOut(),
-          ),
-        ],
       ),
       body: Column(
         children: [

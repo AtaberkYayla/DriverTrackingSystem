@@ -23,7 +23,8 @@ class TripStop {
     this.gidilenIlce,
     this.gidilenSirketId,
     this.gidilenSirketFree,
-    this.irsaliyeNo,
+    this.irsaliyeNoGiris,
+    this.irsaliyeNoCikis,
     this.firmaCikisAt,
     this.onayDurumu = OnayDurumu.beklemede,
     this.onaylayanId,
@@ -45,7 +46,8 @@ class TripStop {
   final String? gidilenIlce;
   final String? gidilenSirketId;
   final String? gidilenSirketFree;
-  final String? irsaliyeNo;
+  final String? irsaliyeNoGiris;
+  final String? irsaliyeNoCikis;
   final DateTime? firmaCikisAt;
 
   final OnayDurumu onayDurumu;
@@ -74,7 +76,8 @@ class TripStop {
         gidilenIlce: json['gidilen_ilce'] as String?,
         gidilenSirketId: json['gidilen_sirket_id'] as String?,
         gidilenSirketFree: json['gidilen_sirket_free'] as String?,
-        irsaliyeNo: json['irsaliye_no'] as String?,
+        irsaliyeNoGiris: json['irsaliye_no_giris'] as String?,
+        irsaliyeNoCikis: json['irsaliye_no_cikis'] as String?,
         firmaCikisAt: json['firma_cikis_at'] == null
             ? null
             : DateTime.parse(json['firma_cikis_at'] as String),
@@ -104,7 +107,8 @@ class TripStop {
       'gidilen_ilce': gidilenIlce,
       'gidilen_sirket_id': gidilenSirketId,
       'gidilen_sirket_free': gidilenSirketFree,
-      'irsaliye_no': irsaliyeNo,
+      'irsaliye_no_giris': irsaliyeNoGiris,
+      'irsaliye_no_cikis': irsaliyeNoCikis,
       'firma_cikis_at': firmaCikisAt?.toIso8601String(),
       'onay_durumu': onayDurumu.toJson(),
       'onaylayan_id': onaylayanId,
@@ -130,7 +134,8 @@ class TripStop {
     String? gidilenIlce,
     String? gidilenSirketId,
     String? gidilenSirketFree,
-    String? irsaliyeNo,
+    String? irsaliyeNoGiris,
+    String? irsaliyeNoCikis,
     DateTime? firmaCikisAt,
     OnayDurumu? onayDurumu,
     String? onaylayanId,
@@ -151,7 +156,8 @@ class TripStop {
       gidilenIlce: gidilenIlce ?? this.gidilenIlce,
       gidilenSirketId: gidilenSirketId ?? this.gidilenSirketId,
       gidilenSirketFree: gidilenSirketFree ?? this.gidilenSirketFree,
-      irsaliyeNo: irsaliyeNo ?? this.irsaliyeNo,
+      irsaliyeNoGiris: irsaliyeNoGiris ?? this.irsaliyeNoGiris,
+      irsaliyeNoCikis: irsaliyeNoCikis ?? this.irsaliyeNoCikis,
       firmaCikisAt: firmaCikisAt ?? this.firmaCikisAt,
       onayDurumu: onayDurumu ?? this.onayDurumu,
       onaylayanId: onaylayanId ?? this.onaylayanId,

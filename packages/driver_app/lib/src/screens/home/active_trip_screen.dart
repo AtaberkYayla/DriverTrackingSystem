@@ -287,7 +287,7 @@ class _ActiveTripScreenState extends ConsumerState<ActiveTripScreen> {
           gidilenIlce: Value(sonuc.gidilenIlce),
           gidilenSirketId: Value(sonuc.gidilenSirketId),
           gidilenSirketFree: Value(sonuc.gidilenSirketFree),
-          irsaliyeNo: Value(sonuc.irsaliyeNo),
+          irsaliyeNoGiris: Value(sonuc.irsaliyeNoGiris),
           notlar: Value(sonuc.notlar),
           updatedLocallyAt: now,
         ));
@@ -296,6 +296,22 @@ class _ActiveTripScreenState extends ConsumerState<ActiveTripScreen> {
   }
 
   Future<void> _firmaCikisYap(TripsCacheData trip, TripStopsCacheData openStop) async {
+    var irsaliyeNoCikis = openStop.irsaliyeNoCikis;
+    final tripTypes = await ref.read(tripTypesProvider.future);
+    TripTypesCacheData? tripType;
+    for (final t in tripTypes) {
+      if (t.id == openStop.tripTypeId) {
+        tripType = t;
+        break;
+      }
+    }
+    // İrsaliye no zorunlu değil, ama bu 3 sefer türünde yine de sorulur -
+    // sofor isterse boş geçebilir.
+    if (tripType?.requiresIrsaliye ?? false) {
+      if (!mounted) return;
+      irsaliyeNoCikis = await _irsaliyeNoIste(context, mevcut: irsaliyeNoCikis);
+    }
+
     setState(() => _islemDevamEdiyor = true);
     final now = DateTime.now();
     await ref.read(localStoreProvider).upsertLocalStop(TripStopsCacheCompanion(
@@ -310,7 +326,8 @@ class _ActiveTripScreenState extends ConsumerState<ActiveTripScreen> {
           gidilenIlce: Value(openStop.gidilenIlce),
           gidilenSirketId: Value(openStop.gidilenSirketId),
           gidilenSirketFree: Value(openStop.gidilenSirketFree),
-          irsaliyeNo: Value(openStop.irsaliyeNo),
+          irsaliyeNoGiris: Value(openStop.irsaliyeNoGiris),
+          irsaliyeNoCikis: Value(irsaliyeNoCikis),
           notlar: Value(openStop.notlar),
           firmaCikisAt: Value(now),
           synced: const Value(false),
@@ -318,6 +335,40 @@ class _ActiveTripScreenState extends ConsumerState<ActiveTripScreen> {
         ));
     ref.read(syncServiceProvider).drainOutbox();
     if (mounted) setState(() => _islemDevamEdiyor = false);
+  }
+
+  /// İrsaliye no zorunlu değildir - sofor "Boş Geç" ile atlayabilir ya da
+  /// pencereyi kapatabilir, her durumda firma çıkışı normal şekilde devam eder.
+  Future<String?> _irsaliyeNoIste(BuildContext context, {String? mevcut}) {
+    final controller = TextEditingController(text: mevcut ?? '');
+    return showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('İrsaliye No (Çıkış)'),
+        content: TextFormField(
+          controller: controller,
+          autofocus: true,
+          decoration: const InputDecoration(
+            labelText: 'İrsaliye No',
+            helperText: 'Biliyorsanız girin, zorunlu değil',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Boş Geç'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final text = controller.text.trim();
+              Navigator.of(context).pop(text.isEmpty ? null : text);
+            },
+            child: const Text('Kaydet'),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _fabrikaGirisYap(TripsCacheData trip) async {

@@ -122,7 +122,8 @@ class SyncService {
         gidilenIlce: row.gidilenIlce,
         gidilenSirketId: row.gidilenSirketId,
         gidilenSirketFree: row.gidilenSirketFree,
-        irsaliyeNo: row.irsaliyeNo,
+        irsaliyeNoGiris: row.irsaliyeNoGiris,
+        irsaliyeNoCikis: row.irsaliyeNoCikis,
         firmaCikisAt: row.firmaCikisAt,
         notlar: row.notlar,
       );

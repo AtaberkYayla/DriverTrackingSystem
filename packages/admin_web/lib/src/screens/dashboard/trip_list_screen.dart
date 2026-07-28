@@ -309,16 +309,21 @@ class _FilterBar extends ConsumerWidget {
   const _FilterBar();
 
   Future<void> _tarihSec(BuildContext context, WidgetRef ref, TripFilters filters) async {
-    final secilen = await showDatePicker(
+    final bugun = bugununTarihi();
+    final secilen = await showDateRangePicker(
       context: context,
-      initialDate: filters.baslangic ?? bugununTarihi(),
+      initialDateRange: DateTimeRange(
+        start: filters.baslangic ?? bugun,
+        end: filters.bitis ?? filters.baslangic ?? bugun,
+      ),
       firstDate: DateTime(2024),
-      lastDate: bugununTarihi().add(const Duration(days: 365)),
-      helpText: 'Sefer Tarihi',
+      lastDate: bugun.add(const Duration(days: 365)),
+      helpText: 'Sefer Tarih Aralığı',
+      initialEntryMode: DatePickerEntryMode.input,
     );
     if (secilen == null) return;
     ref.read(tripFiltersProvider.notifier).state =
-        filters.copyWith(baslangic: secilen, bitis: secilen);
+        filters.copyWith(baslangic: secilen.start, bitis: secilen.end);
   }
 
   @override
@@ -336,9 +341,7 @@ class _FilterBar extends ConsumerWidget {
         children: [
           OutlinedButton.icon(
             icon: const Icon(Icons.calendar_today_outlined, size: 16),
-            label: Text(
-              filters.baslangic != null ? dateFormat.format(filters.baslangic!) : 'Tarih Seç',
-            ),
+            label: Text(_tarihAraligiEtiketi(filters, dateFormat)),
             onPressed: () => _tarihSec(context, ref, filters),
           ),
           driversAsync.maybeWhen(
@@ -388,6 +391,14 @@ class _FilterBar extends ConsumerWidget {
       ),
     );
   }
+}
+
+String _tarihAraligiEtiketi(TripFilters filters, DateFormat format) {
+  final baslangic = filters.baslangic;
+  final bitis = filters.bitis;
+  if (baslangic == null) return 'Tarih Seç';
+  if (bitis == null || bitis.isAtSameMomentAs(baslangic)) return format.format(baslangic);
+  return '${format.format(baslangic)} - ${format.format(bitis)}';
 }
 
 String _onayLabel(OnayDurumu d) => switch (d) {

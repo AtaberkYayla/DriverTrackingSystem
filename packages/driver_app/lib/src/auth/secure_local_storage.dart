@@ -1,31 +1,20 @@
+import 'package:core/core.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
-/// Sofor oturumunun tek seferlik giristen sonra kalici kalmasi icin
-/// Supabase oturum tokenini varsayilan SharedPreferences yerine
-/// isletim sisteminin guvenli depolamasinda (Keystore/Keychain) tutar.
-class SecureLocalStorage extends LocalStorage {
+/// Sofor oturumunun tek seferlik giristen sonra kalici kalmasi icin oturum
+/// token'ini isletim sisteminin guvenli depolamasinda (Android Keystore) tutar.
+class SecureLocalStorage implements TokenStore {
   const SecureLocalStorage();
 
-  static const _key = 'supabase.auth.session';
+  static const _key = 'auth_token';
   static const _storage = FlutterSecureStorage();
 
   @override
-  Future<void> initialize() async {}
+  Future<String?> read() => _storage.read(key: _key);
 
   @override
-  Future<bool> hasAccessToken() async {
-    final value = await _storage.read(key: _key);
-    return value != null;
-  }
+  Future<void> write(String token) => _storage.write(key: _key, value: token);
 
   @override
-  Future<String?> accessToken() => _storage.read(key: _key);
-
-  @override
-  Future<void> removePersistedSession() => _storage.delete(key: _key);
-
-  @override
-  Future<void> persistSession(String persistSessionString) =>
-      _storage.write(key: _key, value: persistSessionString);
+  Future<void> clear() => _storage.delete(key: _key);
 }

@@ -43,7 +43,8 @@ class TripStopsCache extends Table {
   TextColumn get gidilenIlce => text().nullable()();
   TextColumn get gidilenSirketId => text().nullable()();
   TextColumn get gidilenSirketFree => text().nullable()();
-  TextColumn get irsaliyeNo => text().nullable()();
+  TextColumn get irsaliyeNoGiris => text().nullable()();
+  TextColumn get irsaliyeNoCikis => text().nullable()();
   DateTimeColumn get firmaCikisAt => dateTime().nullable()();
   TextColumn get notlar => text().nullable()();
 
@@ -116,7 +117,7 @@ class AppDatabase extends _$AppDatabase {
         ));
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(

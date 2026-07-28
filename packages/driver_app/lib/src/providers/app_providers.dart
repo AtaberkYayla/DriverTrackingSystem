@@ -1,6 +1,5 @@
 import 'package:core/core.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:supabase_flutter/supabase_flutter.dart' show AuthState;
 
 import '../local/app_database.dart';
 import '../local/local_store.dart';

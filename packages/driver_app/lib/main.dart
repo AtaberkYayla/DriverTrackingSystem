@@ -5,45 +5,29 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'src/auth/secure_local_storage.dart';
 import 'src/providers/app_providers.dart';
 import 'src/screens/home/active_trip_screen.dart';
 import 'src/screens/login/login_screen.dart';
 
-const _supabaseUrl = String.fromEnvironment('SUPABASE_URL');
-const _supabasePublishableKey = String.fromEnvironment('SUPABASE_PUBLISHABLE_KEY');
+const _apiBaseUrl = String.fromEnvironment('API_BASE_URL');
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  final config = await _loadSupabaseConfig();
-  await initSupabase(
-    url: config['SUPABASE_URL'] ?? _supabaseUrl,
-    publishableKey: config['SUPABASE_PUBLISHABLE_KEY'] ?? _supabasePublishableKey,
-    localStorage: const SecureLocalStorage(),
-  );
+  final baseUrl = _apiBaseUrl.isNotEmpty ? _apiBaseUrl : await _loadApiBaseUrl();
+  await initApiClient(baseUrl: baseUrl, tokenStore: const SecureLocalStorage());
   runApp(const ProviderScope(child: SoforTakipApp()));
 }
 
-Future<Map<String, String>> _loadSupabaseConfig() async {
-  if (_supabaseUrl.isNotEmpty && _supabasePublishableKey.isNotEmpty) {
-    return {
-      'SUPABASE_URL': _supabaseUrl,
-      'SUPABASE_PUBLISHABLE_KEY': _supabasePublishableKey,
-    };
-  }
-
+Future<String> _loadApiBaseUrl() async {
   try {
-    final raw = await rootBundle.loadString('env/supabase.json');
+    final raw = await rootBundle.loadString('env/api.json');
     final decoded = jsonDecode(raw) as Map<String, dynamic>;
-    return {
-      'SUPABASE_URL': (decoded['SUPABASE_URL'] as String?) ?? '',
-      'SUPABASE_PUBLISHABLE_KEY': (decoded['SUPABASE_PUBLISHABLE_KEY'] as String?) ?? '',
-    };
+    return (decoded['API_BASE_URL'] as String?) ?? '';
   } catch (_) {
-    return {};
+    return '';
   }
 }
 
@@ -73,13 +57,11 @@ class _AuthGate extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final authState = ref.watch(authStateChangesProvider);
-
-    final oturumAcik = authState.maybeWhen(
-      data: (state) => state.session != null,
-      orElse: () => Supabase.instance.client.auth.currentSession != null,
+    final profileAsync = ref.watch(currentProfileProvider);
+    return profileAsync.when(
+      loading: () => const Scaffold(body: Center(child: CircularProgressIndicator())),
+      error: (e, _) => const LoginScreen(),
+      data: (profile) => profile == null ? const LoginScreen() : const ActiveTripScreen(),
     );
-
-    return oturumAcik ? const ActiveTripScreen() : const LoginScreen();
   }
 }

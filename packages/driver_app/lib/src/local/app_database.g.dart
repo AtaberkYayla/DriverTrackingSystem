@@ -829,12 +829,23 @@ class $TripStopsCacheTable extends TripStopsCache
         type: DriftSqlType.string,
         requiredDuringInsert: false,
       );
-  static const VerificationMeta _irsaliyeNoMeta = const VerificationMeta(
-    'irsaliyeNo',
+  static const VerificationMeta _irsaliyeNoGirisMeta = const VerificationMeta(
+    'irsaliyeNoGiris',
   );
   @override
-  late final GeneratedColumn<String> irsaliyeNo = GeneratedColumn<String>(
-    'irsaliye_no',
+  late final GeneratedColumn<String> irsaliyeNoGiris = GeneratedColumn<String>(
+    'irsaliye_no_giris',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _irsaliyeNoCikisMeta = const VerificationMeta(
+    'irsaliyeNoCikis',
+  );
+  @override
+  late final GeneratedColumn<String> irsaliyeNoCikis = GeneratedColumn<String>(
+    'irsaliye_no_cikis',
     aliasedName,
     true,
     type: DriftSqlType.string,
@@ -922,7 +933,8 @@ class $TripStopsCacheTable extends TripStopsCache
     gidilenIlce,
     gidilenSirketId,
     gidilenSirketFree,
-    irsaliyeNo,
+    irsaliyeNoGiris,
+    irsaliyeNoCikis,
     firmaCikisAt,
     notlar,
     synced,
@@ -1049,10 +1061,22 @@ class $TripStopsCacheTable extends TripStopsCache
         ),
       );
     }
-    if (data.containsKey('irsaliye_no')) {
+    if (data.containsKey('irsaliye_no_giris')) {
       context.handle(
-        _irsaliyeNoMeta,
-        irsaliyeNo.isAcceptableOrUnknown(data['irsaliye_no']!, _irsaliyeNoMeta),
+        _irsaliyeNoGirisMeta,
+        irsaliyeNoGiris.isAcceptableOrUnknown(
+          data['irsaliye_no_giris']!,
+          _irsaliyeNoGirisMeta,
+        ),
+      );
+    }
+    if (data.containsKey('irsaliye_no_cikis')) {
+      context.handle(
+        _irsaliyeNoCikisMeta,
+        irsaliyeNoCikis.isAcceptableOrUnknown(
+          data['irsaliye_no_cikis']!,
+          _irsaliyeNoCikisMeta,
+        ),
       );
     }
     if (data.containsKey('firma_cikis_at')) {
@@ -1156,9 +1180,13 @@ class $TripStopsCacheTable extends TripStopsCache
         DriftSqlType.string,
         data['${effectivePrefix}gidilen_sirket_free'],
       ),
-      irsaliyeNo: attachedDatabase.typeMapping.read(
+      irsaliyeNoGiris: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
-        data['${effectivePrefix}irsaliye_no'],
+        data['${effectivePrefix}irsaliye_no_giris'],
+      ),
+      irsaliyeNoCikis: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}irsaliye_no_cikis'],
       ),
       firmaCikisAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
@@ -1207,7 +1235,8 @@ class TripStopsCacheData extends DataClass
   final String? gidilenIlce;
   final String? gidilenSirketId;
   final String? gidilenSirketFree;
-  final String? irsaliyeNo;
+  final String? irsaliyeNoGiris;
+  final String? irsaliyeNoCikis;
   final DateTime? firmaCikisAt;
   final String? notlar;
   final bool synced;
@@ -1227,7 +1256,8 @@ class TripStopsCacheData extends DataClass
     this.gidilenIlce,
     this.gidilenSirketId,
     this.gidilenSirketFree,
-    this.irsaliyeNo,
+    this.irsaliyeNoGiris,
+    this.irsaliyeNoCikis,
     this.firmaCikisAt,
     this.notlar,
     required this.synced,
@@ -1266,8 +1296,11 @@ class TripStopsCacheData extends DataClass
     if (!nullToAbsent || gidilenSirketFree != null) {
       map['gidilen_sirket_free'] = Variable<String>(gidilenSirketFree);
     }
-    if (!nullToAbsent || irsaliyeNo != null) {
-      map['irsaliye_no'] = Variable<String>(irsaliyeNo);
+    if (!nullToAbsent || irsaliyeNoGiris != null) {
+      map['irsaliye_no_giris'] = Variable<String>(irsaliyeNoGiris);
+    }
+    if (!nullToAbsent || irsaliyeNoCikis != null) {
+      map['irsaliye_no_cikis'] = Variable<String>(irsaliyeNoCikis);
     }
     if (!nullToAbsent || firmaCikisAt != null) {
       map['firma_cikis_at'] = Variable<DateTime>(firmaCikisAt);
@@ -1314,9 +1347,12 @@ class TripStopsCacheData extends DataClass
       gidilenSirketFree: gidilenSirketFree == null && nullToAbsent
           ? const Value.absent()
           : Value(gidilenSirketFree),
-      irsaliyeNo: irsaliyeNo == null && nullToAbsent
+      irsaliyeNoGiris: irsaliyeNoGiris == null && nullToAbsent
           ? const Value.absent()
-          : Value(irsaliyeNo),
+          : Value(irsaliyeNoGiris),
+      irsaliyeNoCikis: irsaliyeNoCikis == null && nullToAbsent
+          ? const Value.absent()
+          : Value(irsaliyeNoCikis),
       firmaCikisAt: firmaCikisAt == null && nullToAbsent
           ? const Value.absent()
           : Value(firmaCikisAt),
@@ -1352,7 +1388,8 @@ class TripStopsCacheData extends DataClass
       gidilenSirketFree: serializer.fromJson<String?>(
         json['gidilenSirketFree'],
       ),
-      irsaliyeNo: serializer.fromJson<String?>(json['irsaliyeNo']),
+      irsaliyeNoGiris: serializer.fromJson<String?>(json['irsaliyeNoGiris']),
+      irsaliyeNoCikis: serializer.fromJson<String?>(json['irsaliyeNoCikis']),
       firmaCikisAt: serializer.fromJson<DateTime?>(json['firmaCikisAt']),
       notlar: serializer.fromJson<String?>(json['notlar']),
       synced: serializer.fromJson<bool>(json['synced']),
@@ -1377,7 +1414,8 @@ class TripStopsCacheData extends DataClass
       'gidilenIlce': serializer.toJson<String?>(gidilenIlce),
       'gidilenSirketId': serializer.toJson<String?>(gidilenSirketId),
       'gidilenSirketFree': serializer.toJson<String?>(gidilenSirketFree),
-      'irsaliyeNo': serializer.toJson<String?>(irsaliyeNo),
+      'irsaliyeNoGiris': serializer.toJson<String?>(irsaliyeNoGiris),
+      'irsaliyeNoCikis': serializer.toJson<String?>(irsaliyeNoCikis),
       'firmaCikisAt': serializer.toJson<DateTime?>(firmaCikisAt),
       'notlar': serializer.toJson<String?>(notlar),
       'synced': serializer.toJson<bool>(synced),
@@ -1400,7 +1438,8 @@ class TripStopsCacheData extends DataClass
     Value<String?> gidilenIlce = const Value.absent(),
     Value<String?> gidilenSirketId = const Value.absent(),
     Value<String?> gidilenSirketFree = const Value.absent(),
-    Value<String?> irsaliyeNo = const Value.absent(),
+    Value<String?> irsaliyeNoGiris = const Value.absent(),
+    Value<String?> irsaliyeNoCikis = const Value.absent(),
     Value<DateTime?> firmaCikisAt = const Value.absent(),
     Value<String?> notlar = const Value.absent(),
     bool? synced,
@@ -1424,7 +1463,12 @@ class TripStopsCacheData extends DataClass
     gidilenSirketFree: gidilenSirketFree.present
         ? gidilenSirketFree.value
         : this.gidilenSirketFree,
-    irsaliyeNo: irsaliyeNo.present ? irsaliyeNo.value : this.irsaliyeNo,
+    irsaliyeNoGiris: irsaliyeNoGiris.present
+        ? irsaliyeNoGiris.value
+        : this.irsaliyeNoGiris,
+    irsaliyeNoCikis: irsaliyeNoCikis.present
+        ? irsaliyeNoCikis.value
+        : this.irsaliyeNoCikis,
     firmaCikisAt: firmaCikisAt.present ? firmaCikisAt.value : this.firmaCikisAt,
     notlar: notlar.present ? notlar.value : this.notlar,
     synced: synced ?? this.synced,
@@ -1464,9 +1508,12 @@ class TripStopsCacheData extends DataClass
       gidilenSirketFree: data.gidilenSirketFree.present
           ? data.gidilenSirketFree.value
           : this.gidilenSirketFree,
-      irsaliyeNo: data.irsaliyeNo.present
-          ? data.irsaliyeNo.value
-          : this.irsaliyeNo,
+      irsaliyeNoGiris: data.irsaliyeNoGiris.present
+          ? data.irsaliyeNoGiris.value
+          : this.irsaliyeNoGiris,
+      irsaliyeNoCikis: data.irsaliyeNoCikis.present
+          ? data.irsaliyeNoCikis.value
+          : this.irsaliyeNoCikis,
       firmaCikisAt: data.firmaCikisAt.present
           ? data.firmaCikisAt.value
           : this.firmaCikisAt,
@@ -1497,7 +1544,8 @@ class TripStopsCacheData extends DataClass
           ..write('gidilenIlce: $gidilenIlce, ')
           ..write('gidilenSirketId: $gidilenSirketId, ')
           ..write('gidilenSirketFree: $gidilenSirketFree, ')
-          ..write('irsaliyeNo: $irsaliyeNo, ')
+          ..write('irsaliyeNoGiris: $irsaliyeNoGiris, ')
+          ..write('irsaliyeNoCikis: $irsaliyeNoCikis, ')
           ..write('firmaCikisAt: $firmaCikisAt, ')
           ..write('notlar: $notlar, ')
           ..write('synced: $synced, ')
@@ -1522,7 +1570,8 @@ class TripStopsCacheData extends DataClass
     gidilenIlce,
     gidilenSirketId,
     gidilenSirketFree,
-    irsaliyeNo,
+    irsaliyeNoGiris,
+    irsaliyeNoCikis,
     firmaCikisAt,
     notlar,
     synced,
@@ -1546,7 +1595,8 @@ class TripStopsCacheData extends DataClass
           other.gidilenIlce == this.gidilenIlce &&
           other.gidilenSirketId == this.gidilenSirketId &&
           other.gidilenSirketFree == this.gidilenSirketFree &&
-          other.irsaliyeNo == this.irsaliyeNo &&
+          other.irsaliyeNoGiris == this.irsaliyeNoGiris &&
+          other.irsaliyeNoCikis == this.irsaliyeNoCikis &&
           other.firmaCikisAt == this.firmaCikisAt &&
           other.notlar == this.notlar &&
           other.synced == this.synced &&
@@ -1568,7 +1618,8 @@ class TripStopsCacheCompanion extends UpdateCompanion<TripStopsCacheData> {
   final Value<String?> gidilenIlce;
   final Value<String?> gidilenSirketId;
   final Value<String?> gidilenSirketFree;
-  final Value<String?> irsaliyeNo;
+  final Value<String?> irsaliyeNoGiris;
+  final Value<String?> irsaliyeNoCikis;
   final Value<DateTime?> firmaCikisAt;
   final Value<String?> notlar;
   final Value<bool> synced;
@@ -1589,7 +1640,8 @@ class TripStopsCacheCompanion extends UpdateCompanion<TripStopsCacheData> {
     this.gidilenIlce = const Value.absent(),
     this.gidilenSirketId = const Value.absent(),
     this.gidilenSirketFree = const Value.absent(),
-    this.irsaliyeNo = const Value.absent(),
+    this.irsaliyeNoGiris = const Value.absent(),
+    this.irsaliyeNoCikis = const Value.absent(),
     this.firmaCikisAt = const Value.absent(),
     this.notlar = const Value.absent(),
     this.synced = const Value.absent(),
@@ -1611,7 +1663,8 @@ class TripStopsCacheCompanion extends UpdateCompanion<TripStopsCacheData> {
     this.gidilenIlce = const Value.absent(),
     this.gidilenSirketId = const Value.absent(),
     this.gidilenSirketFree = const Value.absent(),
-    this.irsaliyeNo = const Value.absent(),
+    this.irsaliyeNoGiris = const Value.absent(),
+    this.irsaliyeNoCikis = const Value.absent(),
     this.firmaCikisAt = const Value.absent(),
     this.notlar = const Value.absent(),
     this.synced = const Value.absent(),
@@ -1637,7 +1690,8 @@ class TripStopsCacheCompanion extends UpdateCompanion<TripStopsCacheData> {
     Expression<String>? gidilenIlce,
     Expression<String>? gidilenSirketId,
     Expression<String>? gidilenSirketFree,
-    Expression<String>? irsaliyeNo,
+    Expression<String>? irsaliyeNoGiris,
+    Expression<String>? irsaliyeNoCikis,
     Expression<DateTime>? firmaCikisAt,
     Expression<String>? notlar,
     Expression<bool>? synced,
@@ -1659,7 +1713,8 @@ class TripStopsCacheCompanion extends UpdateCompanion<TripStopsCacheData> {
       if (gidilenIlce != null) 'gidilen_ilce': gidilenIlce,
       if (gidilenSirketId != null) 'gidilen_sirket_id': gidilenSirketId,
       if (gidilenSirketFree != null) 'gidilen_sirket_free': gidilenSirketFree,
-      if (irsaliyeNo != null) 'irsaliye_no': irsaliyeNo,
+      if (irsaliyeNoGiris != null) 'irsaliye_no_giris': irsaliyeNoGiris,
+      if (irsaliyeNoCikis != null) 'irsaliye_no_cikis': irsaliyeNoCikis,
       if (firmaCikisAt != null) 'firma_cikis_at': firmaCikisAt,
       if (notlar != null) 'notlar': notlar,
       if (synced != null) 'synced': synced,
@@ -1683,7 +1738,8 @@ class TripStopsCacheCompanion extends UpdateCompanion<TripStopsCacheData> {
     Value<String?>? gidilenIlce,
     Value<String?>? gidilenSirketId,
     Value<String?>? gidilenSirketFree,
-    Value<String?>? irsaliyeNo,
+    Value<String?>? irsaliyeNoGiris,
+    Value<String?>? irsaliyeNoCikis,
     Value<DateTime?>? firmaCikisAt,
     Value<String?>? notlar,
     Value<bool>? synced,
@@ -1705,7 +1761,8 @@ class TripStopsCacheCompanion extends UpdateCompanion<TripStopsCacheData> {
       gidilenIlce: gidilenIlce ?? this.gidilenIlce,
       gidilenSirketId: gidilenSirketId ?? this.gidilenSirketId,
       gidilenSirketFree: gidilenSirketFree ?? this.gidilenSirketFree,
-      irsaliyeNo: irsaliyeNo ?? this.irsaliyeNo,
+      irsaliyeNoGiris: irsaliyeNoGiris ?? this.irsaliyeNoGiris,
+      irsaliyeNoCikis: irsaliyeNoCikis ?? this.irsaliyeNoCikis,
       firmaCikisAt: firmaCikisAt ?? this.firmaCikisAt,
       notlar: notlar ?? this.notlar,
       synced: synced ?? this.synced,
@@ -1755,8 +1812,11 @@ class TripStopsCacheCompanion extends UpdateCompanion<TripStopsCacheData> {
     if (gidilenSirketFree.present) {
       map['gidilen_sirket_free'] = Variable<String>(gidilenSirketFree.value);
     }
-    if (irsaliyeNo.present) {
-      map['irsaliye_no'] = Variable<String>(irsaliyeNo.value);
+    if (irsaliyeNoGiris.present) {
+      map['irsaliye_no_giris'] = Variable<String>(irsaliyeNoGiris.value);
+    }
+    if (irsaliyeNoCikis.present) {
+      map['irsaliye_no_cikis'] = Variable<String>(irsaliyeNoCikis.value);
     }
     if (firmaCikisAt.present) {
       map['firma_cikis_at'] = Variable<DateTime>(firmaCikisAt.value);
@@ -1797,7 +1857,8 @@ class TripStopsCacheCompanion extends UpdateCompanion<TripStopsCacheData> {
           ..write('gidilenIlce: $gidilenIlce, ')
           ..write('gidilenSirketId: $gidilenSirketId, ')
           ..write('gidilenSirketFree: $gidilenSirketFree, ')
-          ..write('irsaliyeNo: $irsaliyeNo, ')
+          ..write('irsaliyeNoGiris: $irsaliyeNoGiris, ')
+          ..write('irsaliyeNoCikis: $irsaliyeNoCikis, ')
           ..write('firmaCikisAt: $firmaCikisAt, ')
           ..write('notlar: $notlar, ')
           ..write('synced: $synced, ')
@@ -3458,7 +3519,8 @@ typedef $$TripStopsCacheTableCreateCompanionBuilder =
       Value<String?> gidilenIlce,
       Value<String?> gidilenSirketId,
       Value<String?> gidilenSirketFree,
-      Value<String?> irsaliyeNo,
+      Value<String?> irsaliyeNoGiris,
+      Value<String?> irsaliyeNoCikis,
       Value<DateTime?> firmaCikisAt,
       Value<String?> notlar,
       Value<bool> synced,
@@ -3481,7 +3543,8 @@ typedef $$TripStopsCacheTableUpdateCompanionBuilder =
       Value<String?> gidilenIlce,
       Value<String?> gidilenSirketId,
       Value<String?> gidilenSirketFree,
-      Value<String?> irsaliyeNo,
+      Value<String?> irsaliyeNoGiris,
+      Value<String?> irsaliyeNoCikis,
       Value<DateTime?> firmaCikisAt,
       Value<String?> notlar,
       Value<bool> synced,
@@ -3560,8 +3623,13 @@ class $$TripStopsCacheTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<String> get irsaliyeNo => $composableBuilder(
-    column: $table.irsaliyeNo,
+  ColumnFilters<String> get irsaliyeNoGiris => $composableBuilder(
+    column: $table.irsaliyeNoGiris,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get irsaliyeNoCikis => $composableBuilder(
+    column: $table.irsaliyeNoCikis,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -3665,8 +3733,13 @@ class $$TripStopsCacheTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get irsaliyeNo => $composableBuilder(
-    column: $table.irsaliyeNo,
+  ColumnOrderings<String> get irsaliyeNoGiris => $composableBuilder(
+    column: $table.irsaliyeNoGiris,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get irsaliyeNoCikis => $composableBuilder(
+    column: $table.irsaliyeNoCikis,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -3764,8 +3837,13 @@ class $$TripStopsCacheTableAnnotationComposer
     builder: (column) => column,
   );
 
-  GeneratedColumn<String> get irsaliyeNo => $composableBuilder(
-    column: $table.irsaliyeNo,
+  GeneratedColumn<String> get irsaliyeNoGiris => $composableBuilder(
+    column: $table.irsaliyeNoGiris,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get irsaliyeNoCikis => $composableBuilder(
+    column: $table.irsaliyeNoCikis,
     builder: (column) => column,
   );
 
@@ -3843,7 +3921,8 @@ class $$TripStopsCacheTableTableManager
                 Value<String?> gidilenIlce = const Value.absent(),
                 Value<String?> gidilenSirketId = const Value.absent(),
                 Value<String?> gidilenSirketFree = const Value.absent(),
-                Value<String?> irsaliyeNo = const Value.absent(),
+                Value<String?> irsaliyeNoGiris = const Value.absent(),
+                Value<String?> irsaliyeNoCikis = const Value.absent(),
                 Value<DateTime?> firmaCikisAt = const Value.absent(),
                 Value<String?> notlar = const Value.absent(),
                 Value<bool> synced = const Value.absent(),
@@ -3864,7 +3943,8 @@ class $$TripStopsCacheTableTableManager
                 gidilenIlce: gidilenIlce,
                 gidilenSirketId: gidilenSirketId,
                 gidilenSirketFree: gidilenSirketFree,
-                irsaliyeNo: irsaliyeNo,
+                irsaliyeNoGiris: irsaliyeNoGiris,
+                irsaliyeNoCikis: irsaliyeNoCikis,
                 firmaCikisAt: firmaCikisAt,
                 notlar: notlar,
                 synced: synced,
@@ -3887,7 +3967,8 @@ class $$TripStopsCacheTableTableManager
                 Value<String?> gidilenIlce = const Value.absent(),
                 Value<String?> gidilenSirketId = const Value.absent(),
                 Value<String?> gidilenSirketFree = const Value.absent(),
-                Value<String?> irsaliyeNo = const Value.absent(),
+                Value<String?> irsaliyeNoGiris = const Value.absent(),
+                Value<String?> irsaliyeNoCikis = const Value.absent(),
                 Value<DateTime?> firmaCikisAt = const Value.absent(),
                 Value<String?> notlar = const Value.absent(),
                 Value<bool> synced = const Value.absent(),
@@ -3908,7 +3989,8 @@ class $$TripStopsCacheTableTableManager
                 gidilenIlce: gidilenIlce,
                 gidilenSirketId: gidilenSirketId,
                 gidilenSirketFree: gidilenSirketFree,
-                irsaliyeNo: irsaliyeNo,
+                irsaliyeNoGiris: irsaliyeNoGiris,
+                irsaliyeNoCikis: irsaliyeNoCikis,
                 firmaCikisAt: firmaCikisAt,
                 notlar: notlar,
                 synced: synced,

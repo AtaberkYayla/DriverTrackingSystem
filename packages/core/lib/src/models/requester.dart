@@ -8,17 +8,17 @@ class Requester {
     required this.id,
     required this.fullName,
     this.aktif = true,
-    this.profileId,
+    this.email,
   });
 
   final String id;
   final String fullName;
   final bool aktif;
 
-  /// Bu talep edenin onay vermesi gereken hesabi (profiles.id). Sefer
-  /// listesinde Onay Verici rolundeki kullanicilar sadece kendi profileId'si
-  /// buraya baglanan talep edenlerin durak kayitlarini gorur.
-  final String? profileId;
+  /// Bu talep edenin (Onay Verici) giris hesabi yok - onay/bildirim maili
+  /// dogrudan bu adrese gonderilir, mailin icindeki "Onayla" butonu tek
+  /// tikla onaylar (bkz. backend/approvals_approve.php).
+  final String? email;
 
   factory Requester.fromJson(Map<String, dynamic> json) => _$RequesterFromJson(json);
 

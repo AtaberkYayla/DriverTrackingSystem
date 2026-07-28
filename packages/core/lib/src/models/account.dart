@@ -4,16 +4,15 @@ import 'enums.dart';
 
 part 'account.g.dart';
 
-/// `admin_list_accounts()` RPC'sinden donen, giris hesabi + profil bilgisini
-/// birlikte tasiyan salt-okunur kayit. E-posta `profiles` tablosunda degil
-/// `auth.users`'da tutuldugu icin normal [Profile] modeliyle degil, bu
-/// RPC uzerinden okunur (bkz. AccountRepository).
+/// `/accounts_list.php`'den donen hesap kaydi. Giris artik gercek bir
+/// `username` sutunuyla yapiliyor (bkz. AuthRepository), bu yuzden eski
+/// `email` alani yerini `username`a birakti.
 @JsonSerializable(fieldRename: FieldRename.snake)
 class Account {
   const Account({
     required this.id,
     required this.fullName,
-    required this.email,
+    required this.username,
     required this.role,
     required this.aktif,
     required this.createdAt,
@@ -21,7 +20,7 @@ class Account {
 
   final String id;
   final String fullName;
-  final String email;
+  final String username;
   final AppRole role;
   final bool aktif;
   final DateTime createdAt;

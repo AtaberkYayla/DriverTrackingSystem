@@ -1,7 +1,6 @@
 import 'package:core/core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException;
 import 'package:uuid/uuid.dart';
 
 import '../../providers/app_providers.dart';
@@ -61,9 +60,9 @@ Future<void> _sil(
   try {
     await sil();
     sonrasindaGuncelle();
-  } on PostgrestException catch (e) {
+  } on ApiException catch (e) {
     if (!context.mounted) return;
-    final mesaj = e.code == '23503'
+    final mesaj = e.code == 'fk_in_use'
         ? 'Bu kayıt seferlerde kullanıldığı için silinemez. Pasife alabilirsiniz.'
         : 'Silinemedi: ${e.message}';
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(mesaj)));
@@ -278,10 +277,9 @@ class _TripTypesTab extends ConsumerWidget {
   }
 }
 
-/// Bir Talep Eden aslinda sistemde giris yapip onay verebilen bir hesaba
-/// (profiles/auth.users) karsilik gelir (requesters.profile_id). Bu yuzden
-/// bu sekme sadece isim degil, o kisinin giris hesabini da (e-posta+sifre)
-/// olusturur/gunceller - aksi halde o kisi sisteme hic giremez.
+/// Talep Eden (Onay Verici) hesabi yok - admin_web'e sadece yonetici/admin
+/// girer. Onun yerine buradaki e-postaya, seferle ilgili "Onayla" butonu
+/// iceren bir mail gider; tek tikla (giris yapmadan) onaylayabilir.
 class _RequestersTab extends ConsumerWidget {
   const _RequestersTab();
 
@@ -289,10 +287,6 @@ class _RequestersTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final requestersAsync = ref.watch(requestersProvider);
     final duzenlenebilir = ref.watch(isManagerOrAdminProvider);
-    final emailById = <String, String>{
-      if (duzenlenebilir)
-        for (final a in (ref.watch(accountsProvider).value ?? const <Account>[])) a.id: a.email,
-    };
 
     return requestersAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
@@ -303,11 +297,9 @@ class _RequestersTab extends ConsumerWidget {
               .map((r) => ListTile(
                     title: Text(r.fullName),
                     subtitle: Text(
-                      r.profileId == null
-                          ? 'Giriş hesabı yok'
-                          : (emailById[r.profileId] ?? 'Giriş hesabı var'),
+                      r.email ?? 'E-posta girilmemiş (onay maili gidemez)',
                       style: TextStyle(
-                        color: r.profileId == null ? Colors.orange.shade800 : Colors.grey.shade600,
+                        color: r.email == null ? Colors.orange.shade800 : Colors.grey.shade600,
                       ),
                     ),
                     trailing: Row(
@@ -323,7 +315,7 @@ class _RequestersTab extends ConsumerWidget {
                                           id: r.id,
                                           fullName: r.fullName,
                                           aktif: val,
-                                          profileId: r.profileId,
+                                          email: r.email,
                                         ),
                                       );
                                   ref.invalidate(requestersProvider);
@@ -342,38 +334,23 @@ class _RequestersTab extends ConsumerWidget {
                           ),
                       ],
                     ),
-                    onTap: duzenlenebilir
-                        ? () => _talepEdenDialog(
-                              context,
-                              ref,
-                              requester: r,
-                              mevcutEmail: emailById[r.profileId],
-                            )
-                        : null,
+                    onTap: duzenlenebilir ? () => _dialog(context, ref, r) : null,
                   ))
               .toList(),
         ),
         floatingActionButton: !duzenlenebilir
             ? null
             : FloatingActionButton(
-                onPressed: () => _talepEdenDialog(context, ref),
+                onPressed: () => _dialog(context, ref, null),
                 child: const Icon(Icons.add),
               ),
       ),
     );
   }
 
-  Future<void> _talepEdenDialog(
-    BuildContext context,
-    WidgetRef ref, {
-    Requester? requester,
-    String? mevcutEmail,
-  }) async {
+  Future<void> _dialog(BuildContext context, WidgetRef ref, Requester? requester) async {
     final adController = TextEditingController(text: requester?.fullName);
-    final emailController = TextEditingController(text: mevcutEmail);
-    final sifreController = TextEditingController();
-    final hesapVar = requester?.profileId != null;
-
+    final emailController = TextEditingController(text: requester?.email);
     final kaydet = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -388,21 +365,11 @@ class _RequestersTab extends ConsumerWidget {
             const SizedBox(height: 8),
             TextField(
               controller: emailController,
-              decoration: InputDecoration(
-                labelText: 'E-posta (giriş için)',
-                helperText: hesapVar
-                    ? 'Bu talep edenin giriş yaptığı hesabın e-postası.'
-                    : 'Bu kişinin sisteme girip onay verebilmesi için bir hesap oluşturulur.',
+              decoration: const InputDecoration(
+                labelText: 'E-posta',
+                helperText: 'Sefer onayı için "Onayla" butonu içeren mail bu adrese gider.',
               ),
               keyboardType: TextInputType.emailAddress,
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: sifreController,
-              decoration: InputDecoration(
-                labelText: hesapVar ? 'Yeni Şifre (opsiyonel)' : 'Şifre',
-              ),
-              obscureText: true,
             ),
           ],
         ),
@@ -412,68 +379,14 @@ class _RequestersTab extends ConsumerWidget {
         ],
       ),
     );
-
-    if (kaydet != true) return;
-    final ad = adController.text.trim();
-    final email = emailController.text.trim();
-    final sifre = sifreController.text;
-    if (ad.isEmpty) return;
-
-    if (!hesapVar && email.isEmpty) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Yeni bir talep eden için e-posta ve şifre girmelisiniz; aksi halde bu kişi sisteme giriş yapıp onay veremez.',
-          ),
-        ),
-      );
-      return;
-    }
-    if (!hesapVar && sifre.isEmpty) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Hesap oluşturmak için şifre girmelisiniz.')),
-      );
-      return;
-    }
-
-    try {
-      final accountRepo = ref.read(accountRepositoryProvider);
-      var profileId = requester?.profileId;
-
-      if (profileId == null) {
-        profileId = await accountRepo.createAccount(
-          fullName: ad,
-          email: email,
-          password: sifre,
-          role: AppRole.office,
-        );
-      } else if (email.isNotEmpty || sifre.isNotEmpty) {
-        await accountRepo.updateAccount(
-          userId: profileId,
-          fullName: ad,
-          email: email.isEmpty ? null : email,
-          password: sifre.isEmpty ? null : sifre,
-        );
-      } else {
-        await accountRepo.updateAccount(userId: profileId, fullName: ad);
-      }
-
-      await ref.read(masterDataRepositoryProvider).upsertRequester(
-            Requester(
-              id: requester?.id ?? _uuid.v4(),
-              fullName: ad,
-              aktif: requester?.aktif ?? true,
-              profileId: profileId,
-            ),
-          );
-      ref.invalidate(requestersProvider);
-      ref.invalidate(accountsProvider);
-    } catch (e) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Hata: $e')));
-    }
+    if (kaydet != true || adController.text.trim().isEmpty) return;
+    await ref.read(masterDataRepositoryProvider).upsertRequester(Requester(
+          id: requester?.id ?? _uuid.v4(),
+          fullName: adController.text.trim(),
+          aktif: requester?.aktif ?? true,
+          email: emailController.text.trim().isEmpty ? null : emailController.text.trim(),
+        ));
+    ref.invalidate(requestersProvider);
   }
 }
 

@@ -13,14 +13,14 @@ class LoginScreen extends ConsumerStatefulWidget {
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _emailController = TextEditingController();
+  final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _loading = false;
   String? _hata;
 
   @override
   void dispose() {
-    _emailController.dispose();
+    _usernameController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
@@ -33,8 +33,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     });
     try {
       final auth = ref.read(authRepositoryProvider);
-      await auth.signInWithEmail(
-        email: _emailController.text.trim(),
+      await auth.signIn(
+        username: _usernameController.text.trim(),
         password: _passwordController.text,
       );
       final profile = await auth.fetchCurrentProfile();
@@ -46,7 +46,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         setState(() => _hata = 'Bu hesap devre dışı bırakılmış.');
       }
     } catch (e) {
-      setState(() => _hata = 'Giriş başarısız. E-posta veya şifre hatalı.');
+      setState(() => _hata = 'Giriş başarısız. Kullanıcı adı veya şifre hatalı.');
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -84,15 +84,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ),
                   const SizedBox(height: 32),
                   TextFormField(
-                    controller: _emailController,
+                    controller: _usernameController,
                     decoration: const InputDecoration(
-                      labelText: 'E-posta',
-                      prefixIcon: Icon(Icons.email_outlined),
+                      labelText: 'Kullanıcı Adı',
+                      prefixIcon: Icon(Icons.person_outline),
                       border: OutlineInputBorder(),
                     ),
-                    keyboardType: TextInputType.emailAddress,
                     validator: (v) =>
-                        (v == null || v.trim().isEmpty) ? 'E-posta giriniz' : null,
+                        (v == null || v.trim().isEmpty) ? 'Kullanıcı adı giriniz' : null,
                   ),
                   const SizedBox(height: 16),
                   TextFormField(

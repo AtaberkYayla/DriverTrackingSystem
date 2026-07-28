@@ -14,7 +14,7 @@ class TripDetailFormResult {
     this.gidilenIlce,
     this.gidilenSirketId,
     this.gidilenSirketFree,
-    this.irsaliyeNo,
+    this.irsaliyeNoGiris,
     this.notlar,
   });
 
@@ -25,7 +25,7 @@ class TripDetailFormResult {
   final String? gidilenIlce;
   final String? gidilenSirketId;
   final String? gidilenSirketFree;
-  final String? irsaliyeNo;
+  final String? irsaliyeNoGiris;
   final String? notlar;
 }
 
@@ -44,6 +44,34 @@ const _izinVerilenIller = <String>[
   'Tekirdağ',
 ];
 
+/// "Banka" sefer turu secildiginde "Gidilen Sirket / Yer" alaninda onerilecek
+/// banka listesi - listede yoksa yine serbest metin olarak yazilabilir.
+const _bankalar = <String>[
+  'Garanti Bankası',
+  'QNB Bank A.Ş.',
+  'Yapı ve Kredi Bankası',
+  'Türkiye Halk Bankası A.Ş.',
+  'Vakıfbank',
+  'Ziraat Bankası',
+  'Albarakatürk',
+  'Akbank',
+  'Türk Ekonomi Bankası',
+  'Şeker Bank',
+  'Denizbank',
+  'Anadolu Bank',
+  'İş Bankası',
+  'Türkiye Finans Katılım Bankası',
+  'Vakıf Katılım Bankası',
+  'Ziraat Katılım Bankası',
+  'Odea Bank',
+  'Emlak Katılım',
+  'ING Bank',
+  'Exim Bank',
+  'KuveytTürk',
+  'Türk Ticaret Bankası',
+  'Dünya Katılım Bankası',
+];
+
 Future<TripDetailFormResult?> showTripDetailForm(BuildContext context) {
   return Navigator.of(context).push<TripDetailFormResult>(
     MaterialPageRoute(builder: (_) => const TripDetailFormScreen()),
@@ -60,7 +88,7 @@ class TripDetailFormScreen extends ConsumerStatefulWidget {
 class _TripDetailFormScreenState extends ConsumerState<TripDetailFormScreen> {
   final _formKey = GlobalKey<FormState>();
   final _cikisNedeniController = TextEditingController();
-  final _irsaliyeNoController = TextEditingController();
+  final _irsaliyeNoGirisController = TextEditingController();
   final _ilController = TextEditingController();
   final _ilceController = TextEditingController();
   final _sirketController = TextEditingController();
@@ -74,7 +102,7 @@ class _TripDetailFormScreenState extends ConsumerState<TripDetailFormScreen> {
   @override
   void dispose() {
     _cikisNedeniController.dispose();
-    _irsaliyeNoController.dispose();
+    _irsaliyeNoGirisController.dispose();
     _ilController.dispose();
     _ilceController.dispose();
     _sirketController.dispose();
@@ -222,52 +250,88 @@ class _TripDetailFormScreenState extends ConsumerState<TripDetailFormScreen> {
                     ),
                 ],
                 const SizedBox(height: 16),
-                companiesAsync.when(
-                  loading: () => const LinearProgressIndicator(),
-                  error: (e, _) => Text('Şirketler yüklenemedi: $e'),
-                  data: (companies) => Autocomplete<CompaniesCacheData>(
-                    displayStringForOption: (c) => c.name,
+                if (_seciliTur?.requiresIrsaliye ?? false)
+                  companiesAsync.when(
+                    loading: () => const LinearProgressIndicator(),
+                    error: (e, _) => Text('Şirketler yüklenemedi: $e'),
+                    data: (companies) => Autocomplete<CompaniesCacheData>(
+                      displayStringForOption: (c) => c.name,
+                      optionsBuilder: (value) {
+                        if (value.text.isEmpty) return companies;
+                        final q = value.text.toLowerCase();
+                        return companies.where((c) => c.name.toLowerCase().contains(q));
+                      },
+                      onSelected: (c) => setState(() {
+                        _seciliSirket = c;
+                        _sirketController.text = c.name;
+                      }),
+                      fieldViewBuilder: (context, controller, focusNode, onSubmit) {
+                        return TextFormField(
+                          controller: controller,
+                          focusNode: focusNode,
+                          decoration: const InputDecoration(
+                            labelText: 'Gidilen Şirket',
+                            helperText: 'Listede yoksa serbest metin olarak yazabilirsiniz',
+                            border: OutlineInputBorder(),
+                          ),
+                          onChanged: (v) {
+                            _sirketController.text = v;
+                            if (_seciliSirket != null && _seciliSirket!.name != v) {
+                              _seciliSirket = null;
+                            }
+                          },
+                          validator: (v) =>
+                              (v == null || v.trim().isEmpty) ? 'Gidilen şirket giriniz' : null,
+                        );
+                      },
+                    ),
+                  )
+                else if (_seciliTur?.code == 'BANKA')
+                  Autocomplete<String>(
                     optionsBuilder: (value) {
-                      if (value.text.isEmpty) return companies;
+                      if (value.text.isEmpty) return _bankalar;
                       final q = value.text.toLowerCase();
-                      return companies.where((c) => c.name.toLowerCase().contains(q));
+                      return _bankalar.where((b) => b.toLowerCase().contains(q));
                     },
-                    onSelected: (c) => setState(() {
-                      _seciliSirket = c;
-                      _sirketController.text = c.name;
-                    }),
+                    onSelected: (b) => _sirketController.text = b,
                     fieldViewBuilder: (context, controller, focusNode, onSubmit) {
+                      controller.text = _sirketController.text;
                       return TextFormField(
                         controller: controller,
                         focusNode: focusNode,
                         decoration: const InputDecoration(
-                          labelText: 'Gidilen Şirket',
+                          labelText: 'Gidilen Banka',
                           helperText: 'Listede yoksa serbest metin olarak yazabilirsiniz',
                           border: OutlineInputBorder(),
                         ),
-                        onChanged: (v) {
-                          _sirketController.text = v;
-                          if (_seciliSirket != null && _seciliSirket!.name != v) {
-                            _seciliSirket = null;
-                          }
-                        },
+                        onChanged: (v) => _sirketController.text = v,
                         validator: (v) =>
-                            (v == null || v.trim().isEmpty) ? 'Gidilen şirket giriniz' : null,
+                            (v == null || v.trim().isEmpty) ? 'Gidilen banka giriniz' : null,
                       );
                     },
+                  )
+                else
+                  TextFormField(
+                    controller: _sirketController,
+                    decoration: const InputDecoration(
+                      labelText: 'Gidilen Şirket / Yer',
+                      border: OutlineInputBorder(),
+                    ),
+                    onChanged: (v) {
+                      if (_seciliSirket != null) _seciliSirket = null;
+                    },
+                    validator: (v) =>
+                        (v == null || v.trim().isEmpty) ? 'Gidilen şirket/yer giriniz' : null,
                   ),
-                ),
                 if (_seciliTur?.requiresIrsaliye ?? false) ...[
                   const SizedBox(height: 16),
                   TextFormField(
-                    controller: _irsaliyeNoController,
+                    controller: _irsaliyeNoGirisController,
                     decoration: const InputDecoration(
-                      labelText: 'İrsaliye No',
+                      labelText: 'İrsaliye No (Giriş)',
+                      helperText: 'Biliyorsanız girin, zorunlu değil',
                       border: OutlineInputBorder(),
                     ),
-                    validator: (v) => (v == null || v.trim().isEmpty)
-                        ? 'Bu seyahat türü için irsaliye no zorunludur'
-                        : null,
                   ),
                 ],
                 const SizedBox(height: 16),
@@ -303,8 +367,10 @@ class _TripDetailFormScreenState extends ConsumerState<TripDetailFormScreen> {
         gidilenIlce: _ilceController.text.trim().isEmpty ? null : _ilceController.text.trim(),
         gidilenSirketId: _seciliSirket?.id,
         gidilenSirketFree: _seciliSirket == null ? _sirketController.text.trim() : null,
-        irsaliyeNo: (_seciliTur?.requiresIrsaliye ?? false)
-            ? _irsaliyeNoController.text.trim()
+        irsaliyeNoGiris: (_seciliTur?.requiresIrsaliye ?? false)
+            ? (_irsaliyeNoGirisController.text.trim().isEmpty
+                ? null
+                : _irsaliyeNoGirisController.text.trim())
             : null,
         notlar: _notlarController.text.trim().isEmpty ? null : _notlarController.text.trim(),
       ),

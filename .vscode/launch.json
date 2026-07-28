@@ -7,7 +7,7 @@
       "type": "dart",
       "program": "lib/main.dart",
       "cwd": "packages/driver_app",
-      "args": ["--dart-define-from-file=env/supabase.json"]
+      "args": ["--dart-define-from-file=env/api.json"]
     },
     {
       "name": "admin_web (Chrome)",
@@ -16,7 +16,7 @@
       "program": "lib/main.dart",
       "cwd": "packages/admin_web",
       "deviceId": "chrome",
-      "args": ["--dart-define-from-file=env/supabase.json"]
+      "args": ["--dart-define-from-file=env/api.json"]
     }
   ]
 }

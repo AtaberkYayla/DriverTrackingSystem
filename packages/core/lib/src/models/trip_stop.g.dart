@@ -19,7 +19,8 @@ TripStop _$TripStopFromJson(Map<String, dynamic> json) => TripStop(
   gidilenIlce: json['gidilen_ilce'] as String?,
   gidilenSirketId: json['gidilen_sirket_id'] as String?,
   gidilenSirketFree: json['gidilen_sirket_free'] as String?,
-  irsaliyeNo: json['irsaliye_no'] as String?,
+  irsaliyeNoGiris: json['irsaliye_no_giris'] as String?,
+  irsaliyeNoCikis: json['irsaliye_no_cikis'] as String?,
   firmaCikisAt: json['firma_cikis_at'] == null
       ? null
       : DateTime.parse(json['firma_cikis_at'] as String),
@@ -49,7 +50,8 @@ Map<String, dynamic> _$TripStopToJson(TripStop instance) => <String, dynamic>{
   'gidilen_ilce': instance.gidilenIlce,
   'gidilen_sirket_id': instance.gidilenSirketId,
   'gidilen_sirket_free': instance.gidilenSirketFree,
-  'irsaliye_no': instance.irsaliyeNo,
+  'irsaliye_no_giris': instance.irsaliyeNoGiris,
+  'irsaliye_no_cikis': instance.irsaliyeNoCikis,
   'firma_cikis_at': instance.firmaCikisAt?.toIso8601String(),
   'onay_durumu': instance.onayDurumu.toJson(),
   'onaylayan_id': instance.onaylayanId,

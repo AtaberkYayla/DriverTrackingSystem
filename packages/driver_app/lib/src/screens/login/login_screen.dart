@@ -32,7 +32,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       _hata = null;
     });
     try {
-      await ref.read(authRepositoryProvider).signInWithUsername(
+      await ref.read(authRepositoryProvider).signIn(
             username: _usernameController.text,
             password: _passwordController.text,
           );

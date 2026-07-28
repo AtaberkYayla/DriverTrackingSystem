@@ -33,7 +33,8 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
   late final _gidilenIlceController = TextEditingController(text: _stop.gidilenIlce);
   late String? _seciliSirketId = _stop.gidilenSirketId;
   late final _gidilenSirketFreeController = TextEditingController(text: _stop.gidilenSirketFree);
-  late final _irsaliyeNoController = TextEditingController(text: _stop.irsaliyeNo);
+  late final _irsaliyeNoGirisController = TextEditingController(text: _stop.irsaliyeNoGiris);
+  late final _irsaliyeNoCikisController = TextEditingController(text: _stop.irsaliyeNoCikis);
   late String _seciliVehicleId = _trip.vehicleId;
   late final _tarihController = TextEditingController(text: _trip.tarih);
   late DateTime? _fabrikaCikisAt = _trip.fabrikaCikisAt;
@@ -47,7 +48,8 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
     _gidilenIlController.dispose();
     _gidilenIlceController.dispose();
     _gidilenSirketFreeController.dispose();
-    _irsaliyeNoController.dispose();
+    _irsaliyeNoGirisController.dispose();
+    _irsaliyeNoCikisController.dispose();
     _tarihController.dispose();
     super.dispose();
   }
@@ -95,8 +97,12 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
         gidilenSirketFree: _gidilenSirketFreeController.text.trim().isEmpty
             ? null
             : _gidilenSirketFreeController.text.trim(),
-        irsaliyeNo:
-            _irsaliyeNoController.text.trim().isEmpty ? null : _irsaliyeNoController.text.trim(),
+        irsaliyeNoGiris: _irsaliyeNoGirisController.text.trim().isEmpty
+            ? null
+            : _irsaliyeNoGirisController.text.trim(),
+        irsaliyeNoCikis: _irsaliyeNoCikisController.text.trim().isEmpty
+            ? null
+            : _irsaliyeNoCikisController.text.trim(),
         firmaCikisAt: _stop.firmaCikisAt,
         onayDurumu: _stop.onayDurumu,
         onaylayanId: _stop.onaylayanId,
@@ -191,7 +197,8 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
                       ? refData.sirketAdi(stop.gidilenSirketId)
                       : (stop.gidilenSirketFree ?? '-'),
                 ),
-                _bilgiSatiri('İrsaliye No', stop.irsaliyeNo ?? '-'),
+                _bilgiSatiri('İrsaliye No (Giriş)', stop.irsaliyeNoGiris ?? '-'),
+                _bilgiSatiri('İrsaliye No (Çıkış)', stop.irsaliyeNoCikis ?? '-'),
                 _bilgiSatiri(
                   'Fabrika Çıkış',
                   _fabrikaCikisAt == null ? '-' : dateFormat.format(_fabrikaCikisAt!),
@@ -372,8 +379,15 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
         ),
         const SizedBox(height: 16),
         TextFormField(
-          controller: _irsaliyeNoController,
-          decoration: const InputDecoration(labelText: 'İrsaliye No', border: OutlineInputBorder()),
+          controller: _irsaliyeNoGirisController,
+          decoration: const InputDecoration(
+              labelText: 'İrsaliye No (Giriş)', border: OutlineInputBorder()),
+        ),
+        const SizedBox(height: 16),
+        TextFormField(
+          controller: _irsaliyeNoCikisController,
+          decoration: const InputDecoration(
+              labelText: 'İrsaliye No (Çıkış)', border: OutlineInputBorder()),
         ),
         const SizedBox(height: 16),
         _tarihSaatSecici(

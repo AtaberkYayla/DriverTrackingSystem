@@ -44,5 +44,5 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
-# Supabase kimlik bilgileri (yerel dart-define dosyasi, commit edilmez)
-/env/supabase.json
+# Backend API adresi (yerel dosya, commit edilmez)
+/env/api.json

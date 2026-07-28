@@ -1,48 +1,48 @@
+import '../api/api_client.dart';
 import '../models/account.dart';
 import '../models/enums.dart';
-import '../supabase/supabase_config.dart';
 
-/// Hesap yonetimi (sofor/onay verici/yonetici/admin girisleri). Tum
-/// islemler `SECURITY DEFINER` Postgres fonksiyonlariyla (bkz.
-/// supabase/functions_accounts.sql) yapilir; client hicbir zaman
-/// service_role/secret key gormez, yetki kontrolu fonksiyonun icinde
-/// cagiranin rolune gore yapilir.
+/// Hesap yonetimi (sofor/onay verici/yonetici/admin girisleri). Eski
+/// `SECURITY DEFINER` Postgres RPC'lerinin (supabase/functions_accounts.sql)
+/// yerini backend/accounts_*.php alir - ayni yetki kurallari (yonetici/
+/// admin hesabi olusturmak/duzenlemek icin admin sarti) sunucu tarafinda
+/// aynen korunuyor.
 class AccountRepository {
   Future<List<Account>> listAccounts() async {
-    final rows = await supabase.rpc('admin_list_accounts');
-    return (rows as List).cast<Map<String, dynamic>>().map(Account.fromJson).toList();
+    final rows = await api.get('/accounts_list.php') as List;
+    return rows.cast<Map<String, dynamic>>().map(Account.fromJson).toList();
   }
 
   Future<String> createAccount({
     required String fullName,
-    required String email,
+    required String username,
     required String password,
     required AppRole role,
   }) async {
-    final id = await supabase.rpc('admin_create_account', params: {
-      'p_full_name': fullName,
-      'p_email': email,
-      'p_password': password,
-      'p_role': role.toJson(),
-    });
-    return id as String;
+    final data = await api.post('/accounts_create.php', body: {
+      'full_name': fullName,
+      'username': username,
+      'password': password,
+      'role': role.toJson(),
+    }) as Map<String, dynamic>;
+    return data['id'] as String;
   }
 
   Future<void> updateAccount({
     required String userId,
     String? fullName,
-    String? email,
+    String? username,
     String? password,
     AppRole? role,
     bool? aktif,
   }) async {
-    await supabase.rpc('admin_update_account', params: {
-      'p_user_id': userId,
-      if (fullName != null) 'p_full_name': fullName,
-      if (email != null) 'p_email': email,
-      if (password != null) 'p_password': password,
-      if (role != null) 'p_role': role.toJson(),
-      if (aktif != null) 'p_aktif': aktif,
+    await api.post('/accounts_update.php', body: {
+      'user_id': userId,
+      if (fullName != null) 'full_name': fullName,
+      if (username != null) 'username': username,
+      if (password != null) 'password': password,
+      if (role != null) 'role': role.toJson(),
+      if (aktif != null) 'aktif': aktif,
     });
   }
 }

@@ -9,7 +9,7 @@ part of 'account.dart';
 Account _$AccountFromJson(Map<String, dynamic> json) => Account(
   id: json['id'] as String,
   fullName: json['full_name'] as String,
-  email: json['email'] as String,
+  username: json['username'] as String,
   role: $enumDecode(_$AppRoleEnumMap, json['role']),
   aktif: json['aktif'] as bool,
   createdAt: DateTime.parse(json['created_at'] as String),
@@ -18,7 +18,7 @@ Account _$AccountFromJson(Map<String, dynamic> json) => Account(
 Map<String, dynamic> _$AccountToJson(Account instance) => <String, dynamic>{
   'id': instance.id,
   'full_name': instance.fullName,
-  'email': instance.email,
+  'username': instance.username,
   'role': instance.role,
   'aktif': instance.aktif,
   'created_at': instance.createdAt.toIso8601String(),

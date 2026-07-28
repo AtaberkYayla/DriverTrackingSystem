@@ -44,7 +44,7 @@ class AccountsScreen extends ConsumerWidget {
                     Card(
                       child: ListTile(
                         title: Text(acc.fullName),
-                        subtitle: Text(acc.email),
+                        subtitle: Text(acc.username),
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
@@ -95,11 +95,15 @@ class AccountsScreen extends ConsumerWidget {
       return;
     }
 
-    final secilebilirRoller =
-        isAdmin ? AppRole.values : const [AppRole.driver, AppRole.office];
+    // Onay Verici (office) hesabi artik olusturulmuyor - admin_web'e sadece
+    // yonetici/admin girer. Yonetici sadece sofor hesabi acabilir; admin
+    // ayrica baska yonetici/admin de acabilir.
+    final secilebilirRoller = isAdmin
+        ? const [AppRole.driver, AppRole.manager, AppRole.admin]
+        : const [AppRole.driver];
 
     final fullNameController = TextEditingController(text: account?.fullName);
-    final emailController = TextEditingController(text: account?.email);
+    final usernameController = TextEditingController(text: account?.username);
     final passwordController = TextEditingController();
     var seciliRol = account?.role ?? AppRole.office;
 
@@ -116,8 +120,8 @@ class AccountsScreen extends ConsumerWidget {
                 decoration: const InputDecoration(labelText: 'Ad Soyad'),
               ),
               TextField(
-                controller: emailController,
-                decoration: const InputDecoration(labelText: 'E-posta'),
+                controller: usernameController,
+                decoration: const InputDecoration(labelText: 'Kullanıcı Adı'),
               ),
               TextField(
                 controller: passwordController,
@@ -151,14 +155,14 @@ class AccountsScreen extends ConsumerWidget {
         await repo.updateAccount(
           userId: account.id,
           fullName: fullNameController.text.trim(),
-          email: emailController.text.trim().isEmpty ? null : emailController.text.trim(),
+          username: usernameController.text.trim().isEmpty ? null : usernameController.text.trim(),
           password: passwordController.text.isEmpty ? null : passwordController.text,
           role: seciliRol,
         );
       } else {
         await repo.createAccount(
           fullName: fullNameController.text.trim(),
-          email: emailController.text.trim(),
+          username: usernameController.text.trim(),
           password: passwordController.text,
           role: seciliRol,
         );

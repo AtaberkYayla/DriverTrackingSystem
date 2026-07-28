@@ -1,19 +1,17 @@
 # Sofor Takip Sistemi - Dedem Mekatronik
 
-Sofor mobil uygulamasi (`driver_app`), yonetim web paneli (`admin_web`) ve
-aralarinda paylasilan model/repository kodu (`core`) icin monorepo.
+Sofor mobil uygulamasi (`driver_app`), yonetim web paneli (`admin_web`),
+aralarinda paylasilan model/repository kodu (`core`) ve PHP + MySQL
+backend'i (`backend/`) icin monorepo.
 
 ## Proje Yapisi
 
 ```
+backend/        PHP + MySQL API (Hestia'da barinir) - bkz. backend/README.md
 packages/
-  core/         Paylasilan modeller, Supabase repository'leri, il/ilce verisi
+  core/         Paylasilan modeller, API repository'leri, il/ilce verisi
   driver_app/   Sofor mobil uygulamasi (Android APK)
   admin_web/    Yonetim web paneli (Flutter Web)
-supabase/
-  schema.sql               Veritabani semasi, RLS politikalari, tetikleyiciler
-  seed.sql                 Baslangic master verisi (arac, seyahat turu, talep eden, yonetici)
-  migration_001_trip_stops.sql   Var olan bir projeyi trips+trip_stops semasina gecirir
 ```
 
 Sefer modeli iki tabloya ayrilmistir: `trips` bir soforun fabrikadan
@@ -29,46 +27,30 @@ ile baglanirlar.
 
 ## Kurulum
 
-### 1. Supabase projesi
+### 1. Backend (PHP + MySQL)
 
-1. [supabase.com](https://supabase.com) uzerinde yeni bir proje olusturun.
-2. Proje SQL Editor'unde sirasiyla `supabase/schema.sql` ve `supabase/seed.sql`
-   dosyalarini calistirin. Daha once eski (trip_stops'suz) semayi kurmus
-   bir projeniz varsa, `schema.sql`'i tekrar calistirmak yerine sadece
-   `supabase/migration_001_trip_stops.sql` dosyasini calistirmaniz yeterlidir
-   (eski `trips` verisini siler, profiles/vehicles/vb. etkilenmez).
-3. Settings > API sayfasindan **Project URL** ve **anon/publishable key**
-   degerlerini alin.
-4. Ilk yonetim (office/admin) kullanicisini Supabase Dashboard > Authentication
-   uzerinden e-posta/sifre ile olusturun, ardindan SQL Editor'de:
-   ```sql
-   insert into profiles (id, full_name, role)
-   values ('<auth.users id>', 'Ad Soyad', 'admin');
-   ```
-5. Sofor hesaplari icin: Supabase Auth kullanicisi
-   `{kullanici_adi}@dedemmekatronik.com` e-postasiyla olusturulur
-   (bkz. `AuthRepository.usernameToEmail`), sofore ise sadece kullanici adi
-   ve sifre iletilir. `profiles` tablosuna `role = 'driver'` ile eklenir.
-   Dikkat: kullanici adi, gercek bir personelin e-posta on-ekiyle (ör.
-   ofis calisanin e-postasi ahmet@dedemmekatronik.com ise) ayni olmamalidir,
-   aksi halde hesap catisir.
+Kurulum adimlari icin [backend/README.md](backend/README.md) dosyasina bakin
+(Hestia panelinden veritabani + dosya yukleme + cron kurulumu).
 
-Supabase URL ve publishable key kaynak koda gommek yerine her paketin
-`env/supabase.json` dosyasindan (`env/supabase.example.json` sablonuna gore
-olusturulur) `--dart-define-from-file` ile okunur. Bu dosya `.gitignore`
-icindedir, projeye zaten dolu haliyle eklenmistir.
+Backend'in adresi kaynak koda gommek yerine her paketin `env/api.json`
+dosyasindan (`env/api.example.json` sablonuna gore olusturulur) okunur.
+Bu dosya `.gitignore` icindedir.
+
+```json
+{ "API_BASE_URL": "https://api.dedemmekatronik.com/backend" }
+```
 
 ### 2. driver_app (mobil)
 
 ```bash
 cd packages/driver_app
 flutter pub get
-flutter run --dart-define-from-file=env/supabase.json
+flutter run --dart-define-from-file=env/api.json
 ```
 
 APK almak icin:
 ```bash
-flutter build apk --release --dart-define-from-file=env/supabase.json
+flutter build apk --release --dart-define-from-file=env/api.json
 ```
 
 ### 3. admin_web (yonetim paneli)
@@ -76,15 +58,16 @@ flutter build apk --release --dart-define-from-file=env/supabase.json
 ```bash
 cd packages/admin_web
 flutter pub get
-flutter run -d chrome --dart-define-from-file=env/supabase.json
+flutter run -d chrome --dart-define-from-file=env/api.json
 ```
 
 Yayina almak icin:
 ```bash
-flutter build web --dart-define-from-file=env/supabase.json
+flutter build web --dart-define-from-file=env/api.json
 ```
-uretilen `build/web` klasoru herhangi bir statik hosting (Netlify, Vercel,
-Firebase Hosting) uzerine yuklenebilir.
+uretilen `build/web` klasoru Hestia'da statik dosya olarak (herhangi bir
+domain/subdomain'in web kok dizinine yuklenerek) servis edilir - PHP
+calistirmaya gerek yoktur.
 
 ## Kod Uretimi (build_runner)
 

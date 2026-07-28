@@ -20,6 +20,8 @@ dependencies:
   intl: ^0.20.2
   csv: ^8.0.0
   uuid: ^4.6.0
+  pdf: ^3.13.0
+  printing: ^5.15.0
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -30,6 +32,8 @@ flutter:
   uses-material-design: true
   assets:
     - env/api.json
+    - assets/fonts/Roboto-Regular.ttf
+    - assets/fonts/Roboto-Bold.ttf
 
 flutter_launcher_icons:
   image_path: "../core/assets/branding/dedem-favicon.png"

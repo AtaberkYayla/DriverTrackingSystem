@@ -11,6 +11,9 @@ final masterDataRepositoryProvider =
 
 final accountRepositoryProvider = Provider<AccountRepository>((ref) => AccountRepository());
 
+final mailSettingsRepositoryProvider =
+    Provider<MailSettingsRepository>((ref) => MailSettingsRepository());
+
 final authStateChangesProvider = StreamProvider<AuthState>((ref) {
   return ref.watch(authRepositoryProvider).onAuthStateChange;
 });
@@ -147,6 +150,10 @@ final tripListProvider = FutureProvider.autoDispose<List<TripStopWithTrip>>((ref
         baslangic: filters.baslangic,
         bitis: filters.bitis,
       );
+});
+
+final mailSettingsProvider = FutureProvider<MailSettings>((ref) {
+  return ref.watch(mailSettingsRepositoryProvider).fetch();
 });
 
 final allDriversProvider = FutureProvider<List<Profile>>((ref) async {

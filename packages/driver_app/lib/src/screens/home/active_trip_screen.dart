@@ -7,6 +7,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../local/app_database.dart';
 import '../../providers/app_providers.dart';
+import '../../widgets/autocomplete_options_view.dart';
 import '../../widgets/sync_status_banner.dart';
 import '../history/trip_history_screen.dart';
 import 'trip_detail_form.dart';
@@ -103,6 +104,11 @@ class _ActiveTripScreenState extends ConsumerState<ActiveTripScreen> {
                 final q = value.text.toLowerCase();
                 return vehicles.where((v) => v.plaka.toLowerCase().contains(q));
               },
+              optionsViewBuilder: (context, onSelected, options) => buildAutocompleteOptionsView(
+                options: options,
+                onSelected: onSelected,
+                displayStringForOption: (v) => v.plaka,
+              ),
               onSelected: (v) => setState(() => _seciliArac = v),
               fieldViewBuilder: (context, controller, focusNode, onSubmit) {
                 return TextFormField(

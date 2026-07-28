@@ -45,4 +45,8 @@ class AccountRepository {
       if (aktif != null) 'aktif': aktif,
     });
   }
+
+  Future<void> deleteAccount(String userId) async {
+    await api.delete('/accounts_delete.php', query: {'id': userId});
+  }
 }

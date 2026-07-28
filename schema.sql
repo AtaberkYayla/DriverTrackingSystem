@@ -111,6 +111,23 @@ CREATE TABLE IF NOT EXISTS trip_stops (
   INDEX idx_stops_requester (requester_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- Tek satirlik (id her zaman 1) global SMTP yapilandirmasi - Master Veri
+-- Yonetimi > Mail Ayarlari ekranindan admin tarafindan girilir. Sifre duz
+-- metin tutulur (config.php'deki DB sifresiyle ayni guven seviyesinde);
+-- bu tablo da .htaccess'teki gibi dogrudan web erisimine kapali degildir
+-- ama zaten API'nin GET yaniti sifreyi hic geri dondurmez (bkz. mail_settings.php).
+CREATE TABLE IF NOT EXISTS mail_settings (
+  id TINYINT NOT NULL PRIMARY KEY,
+  smtp_host VARCHAR(255) NULL,
+  smtp_port INT NULL,
+  use_ssl TINYINT(1) NOT NULL DEFAULT 1,
+  from_email VARCHAR(255) NULL,
+  from_name VARCHAR(255) NULL,
+  smtp_user VARCHAR(255) NULL,
+  smtp_password VARCHAR(255) NULL,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 CREATE TABLE IF NOT EXISTS notification_outbox (
   id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
   to_email VARCHAR(255) NOT NULL,

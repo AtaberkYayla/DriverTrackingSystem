@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../local/app_database.dart';
 import '../../providers/app_providers.dart';
+import '../../widgets/autocomplete_options_view.dart';
 
 /// "Firma Giris" asamasinda soforun doldurdugu sefer detaylari.
 class TripDetailFormResult {
@@ -155,6 +156,11 @@ class _TripDetailFormScreenState extends ConsumerState<TripDetailFormScreen> {
                       final q = value.text.toLowerCase();
                       return requesters.where((r) => r.fullName.toLowerCase().contains(q));
                     },
+                    optionsViewBuilder: (context, onSelected, options) => buildAutocompleteOptionsView(
+                      options: options,
+                      onSelected: onSelected,
+                      displayStringForOption: (r) => r.fullName,
+                    ),
                     onSelected: (r) => setState(() => _seciliTalepEden = r),
                     fieldViewBuilder: (context, controller, focusNode, onSubmit) {
                       return TextFormField(
@@ -188,6 +194,11 @@ class _TripDetailFormScreenState extends ConsumerState<TripDetailFormScreen> {
                     final q = value.text.toLowerCase();
                     return _izinVerilenIller.where((il) => il.toLowerCase().contains(q));
                   },
+                  optionsViewBuilder: (context, onSelected, options) => buildAutocompleteOptionsView(
+                    options: options,
+                    onSelected: onSelected,
+                    displayStringForOption: RawAutocomplete.defaultStringForOption,
+                  ),
                   onSelected: (il) => setState(() {
                     _seciliIl = il;
                     _ilController.text = il;
@@ -223,6 +234,11 @@ class _TripDetailFormScreenState extends ConsumerState<TripDetailFormScreen> {
                     Autocomplete<String>(
                       key: ValueKey('ilce-$_seciliIl'),
                       optionsBuilder: (value) => turkey.ilceAra(_seciliIl, value.text),
+                      optionsViewBuilder: (context, onSelected, options) => buildAutocompleteOptionsView(
+                        options: options,
+                        onSelected: onSelected,
+                        displayStringForOption: RawAutocomplete.defaultStringForOption,
+                      ),
                       onSelected: (ilce) => _ilceController.text = ilce,
                       fieldViewBuilder: (context, controller, focusNode, onSubmit) {
                         controller.text = _ilceController.text;
@@ -261,6 +277,11 @@ class _TripDetailFormScreenState extends ConsumerState<TripDetailFormScreen> {
                         final q = value.text.toLowerCase();
                         return companies.where((c) => c.name.toLowerCase().contains(q));
                       },
+                      optionsViewBuilder: (context, onSelected, options) => buildAutocompleteOptionsView(
+                        options: options,
+                        onSelected: onSelected,
+                        displayStringForOption: (c) => c.name,
+                      ),
                       onSelected: (c) => setState(() {
                         _seciliSirket = c;
                         _sirketController.text = c.name;
@@ -293,6 +314,11 @@ class _TripDetailFormScreenState extends ConsumerState<TripDetailFormScreen> {
                       final q = value.text.toLowerCase();
                       return _bankalar.where((b) => b.toLowerCase().contains(q));
                     },
+                    optionsViewBuilder: (context, onSelected, options) => buildAutocompleteOptionsView(
+                      options: options,
+                      onSelected: onSelected,
+                      displayStringForOption: RawAutocomplete.defaultStringForOption,
+                    ),
                     onSelected: (b) => _sirketController.text = b,
                     fieldViewBuilder: (context, controller, focusNode, onSubmit) {
                       controller.text = _sirketController.text;

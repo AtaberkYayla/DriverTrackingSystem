@@ -5,8 +5,10 @@ import 'package:intl/intl.dart';
 
 import '../../providers/app_providers.dart';
 import '../accounts/accounts_screen.dart';
+import '../mail_settings/mail_settings_screen.dart';
 import '../master_data/master_data_screen.dart';
 import '../profile/my_profile_screen.dart';
+import '../reports/report_screen.dart';
 import '../trip_detail/trip_detail_screen.dart';
 
 class TripListScreen extends ConsumerWidget {
@@ -19,6 +21,7 @@ class TripListScreen extends ConsumerWidget {
     final dateFormat = DateFormat('dd.MM.yyyy HH:mm');
     final isManagerOrAdmin = ref.watch(isManagerOrAdminProvider);
     final isManager = ref.watch(isManagerProvider);
+    final isAdmin = ref.watch(isAdminProvider);
 
     // Onceki basariyla yuklenen veriyi elde tutup sadece arka planda tazeler;
     // boylece 1 dakikalik otomatik yenilemede tum liste CircularProgressIndicator
@@ -72,6 +75,22 @@ class TripListScreen extends ConsumerWidget {
               tooltip: 'Master Veri Yönetimi',
               onPressed: () => Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => const MasterDataScreen()),
+              ),
+            ),
+          if (isAdmin)
+            IconButton(
+              icon: const Icon(Icons.mail_outline),
+              tooltip: 'Mail Ayarları',
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const MailSettingsScreen()),
+              ),
+            ),
+          if (isManagerOrAdmin)
+            IconButton(
+              icon: const Icon(Icons.description_outlined),
+              tooltip: 'Sefer Raporu',
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const ReportScreen()),
               ),
             ),
           IconButton(
@@ -330,6 +349,7 @@ class _FilterBar extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final filters = ref.watch(tripFiltersProvider);
     final driversAsync = ref.watch(allDriversProvider);
+    final vehiclesAsync = ref.watch(vehiclesProvider);
     final dateFormat = DateFormat('dd.MM.yyyy');
 
     return Padding(
@@ -354,6 +374,19 @@ class _FilterBar extends ConsumerWidget {
               ],
               onChanged: (v) => ref.read(tripFiltersProvider.notifier).state =
                   filters.copyWith(driverId: v, clearDriver: v == null),
+            ),
+            orElse: () => const SizedBox.shrink(),
+          ),
+          vehiclesAsync.maybeWhen(
+            data: (vehicles) => DropdownButton<String?>(
+              hint: const Text('Plaka'),
+              value: filters.vehicleId,
+              items: [
+                const DropdownMenuItem(value: null, child: Text('Tüm plakalar')),
+                ...vehicles.map((v) => DropdownMenuItem(value: v.id, child: Text(v.plaka))),
+              ],
+              onChanged: (v) => ref.read(tripFiltersProvider.notifier).state =
+                  filters.copyWith(vehicleId: v, clearVehicle: v == null),
             ),
             orElse: () => const SizedBox.shrink(),
           ),

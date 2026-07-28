@@ -37,6 +37,7 @@ function queueTripStopNotification(PDO $pdo, array $trip, array $stop, string $i
 
         // Alici 1: Talep Eden'in kendi e-postasi - tek tikla onay linki icerir.
         // Zaten onaylanmissa tekrar link gondermeye gerek yok.
+        $requesterEmail = null;
         if (!empty($stop['requester_id']) && ($stop['onay_durumu'] ?? null) !== 'ONAYLANDI') {
             $reqStmt = $pdo->prepare(
                 'SELECT email FROM requesters WHERE id = ? AND email IS NOT NULL AND email <> \'\''
@@ -47,16 +48,23 @@ function queueTripStopNotification(PDO $pdo, array $trip, array $stop, string $i
                 $approveUrl = createApprovalLink($pdo, $stop['id']);
                 $html = renderApprovalEmailHtml($konu, $ozet, $approveUrl);
                 insertOutbox($pdo, $requester['email'], $konu, $html, true);
+                $requesterEmail = strtolower(trim($requester['email']));
             }
         }
 
         // Alici 2: bildirim tercihi acik olan tum yonetici/admin'ler (bilgilendirme, HTML - onay linki yok).
+        // Bir yonetici ayni zamanda bu durak icin Talep Eden ise (e-postasi
+        // yukaridakiyle ayniysa) ona ikinci kez gonderilmez - zaten onay
+        // linkli maili aldi.
         $stmt = $pdo->query(
             "SELECT notification_email FROM users
              WHERE role IN ('manager','admin') AND email_bildirim_aktif = 1
                AND notification_email IS NOT NULL"
         );
         foreach ($stmt->fetchAll() as $alici) {
+            if ($requesterEmail !== null && strtolower(trim($alici['notification_email'])) === $requesterEmail) {
+                continue;
+            }
             insertOutbox($pdo, $alici['notification_email'], $konu, renderInfoEmailHtml($konu, $ozet), true);
         }
     } catch (Throwable $e) {

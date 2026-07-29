@@ -4,9 +4,11 @@ require_once __DIR__ . '/lib_bootstrap.php';
 // Yonetim paneli icin duz liste - eski Postgrest embedded-resource
 // ('*, trip_stops(*)') sorgusunun yerini gercek bir SQL JOIN alir. Onay
 // Verici (office) hesabi olmadigindan (bkz. backend/README.md) admin_web'e
-// giren herkes (yonetici/admin) tum seferleri gorur, talep-eden bazli
-// kisitlama yok.
-$user = requireRole($pdo, ['manager', 'admin']);
+// giren herkes (yonetici/admin/operator) tum seferleri gorur, talep-eden
+// bazli kisitlama yok - operator'un duzenleme kisitlamasi (bkz.
+// requireTripOwnershipIfOperator) sadece yazma islemlerinde uygulanir,
+// goruntuleme/rapor icin serbesttir.
+$user = requireRole($pdo, ['manager', 'admin', 'operator']);
 
 $driverId = $_GET['driver_id'] ?? null;
 $vehicleId = $_GET['vehicle_id'] ?? null;
@@ -53,11 +55,11 @@ if ($seferDurumu) {
 }
 
 $sql = "SELECT t.id, t.client_trip_id, t.driver_id, t.vehicle_id, t.tarih,
-               t.fabrika_cikis_at, t.fabrika_giris_at,
+               t.fabrika_cikis_at, t.fabrika_giris_at, t.created_by_user_id,
                s.id AS stop_id, s.client_stop_id, s.sira, s.firma_giris_at, s.trip_type_id,
                s.requester_id, s.cikis_nedeni, s.gidilen_il, s.gidilen_ilce, s.gidilen_sirket_id,
                s.gidilen_sirket_free, s.irsaliye_no_giris, s.irsaliye_no_cikis, s.firma_cikis_at, s.onay_durumu, s.onaylayan_id,
-               s.onaylandi_at, s.sefer_durumu, s.notlar
+               s.onaylandi_at, s.sefer_durumu, s.notlar, s.notlar_cikis
         FROM trips t $stopJoin";
 if ($where) {
     $sql .= ' WHERE ' . implode(' AND ', $where);
@@ -79,6 +81,7 @@ foreach ($rows as $row) {
         'tarih' => $row['tarih'],
         'fabrika_cikis_at' => $row['fabrika_cikis_at'],
         'fabrika_giris_at' => $row['fabrika_giris_at'],
+        'created_by_user_id' => $row['created_by_user_id'],
     ];
     $stop = null;
     if ($row['stop_id'] !== null) {
@@ -103,6 +106,7 @@ foreach ($rows as $row) {
             'onaylandi_at' => $row['onaylandi_at'],
             'sefer_durumu' => $row['sefer_durumu'],
             'notlar' => $row['notlar'],
+            'notlar_cikis' => $row['notlar_cikis'],
         ];
     }
     $result[] = ['trip' => $trip, 'stop' => $stop];

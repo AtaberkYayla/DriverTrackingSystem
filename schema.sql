@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS users (
   username VARCHAR(64) NOT NULL UNIQUE,
   password_hash VARCHAR(255) NOT NULL,
   full_name VARCHAR(255) NOT NULL,
-  role ENUM('driver','office','manager','admin') NOT NULL,
+  role ENUM('driver','office','manager','admin','operator') NOT NULL,
   aktif TINYINT(1) NOT NULL DEFAULT 1,
   notification_email VARCHAR(255) NULL,
   email_bildirim_aktif TINYINT(1) NOT NULL DEFAULT 1,
@@ -82,10 +82,17 @@ CREATE TABLE IF NOT EXISTS trips (
   tarih VARCHAR(10) NOT NULL,
   fabrika_cikis_at DATETIME NULL,
   fabrika_giris_at DATETIME NULL,
+  -- admin_web'den elle (manager/admin/operator tarafindan) olusturulan
+  -- seferlerde kim olusturduysa o kullaniciyi tutar; driver_app'ten gelen
+  -- seferlerde hep NULL'dur. Operator rolunun sadece kendi olusturduğu
+  -- seferleri duzenleyebilmesinin (bkz. backend/lib_auth.php
+  -- requireTripOwnershipIfOperator) temeli budur.
+  created_by_user_id CHAR(36) NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   CONSTRAINT fk_trips_driver FOREIGN KEY (driver_id) REFERENCES users(id),
   CONSTRAINT fk_trips_vehicle FOREIGN KEY (vehicle_id) REFERENCES vehicles(id),
+  CONSTRAINT fk_trips_created_by FOREIGN KEY (created_by_user_id) REFERENCES users(id) ON DELETE SET NULL,
   INDEX idx_trips_driver (driver_id),
   INDEX idx_trips_tarih (tarih)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -111,6 +118,7 @@ CREATE TABLE IF NOT EXISTS trip_stops (
   onaylandi_at DATETIME NULL,
   sefer_durumu ENUM('DEVAM_EDIYOR','BASARILI','BASARISIZ') NOT NULL DEFAULT 'DEVAM_EDIYOR',
   notlar TEXT NULL,
+  notlar_cikis TEXT NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   CONSTRAINT fk_stops_trip FOREIGN KEY (trip_id) REFERENCES trips(id) ON DELETE CASCADE,

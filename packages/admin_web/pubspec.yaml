@@ -21,9 +21,9 @@ dependencies:
   csv: ^8.0.0
   uuid: ^4.6.0
   pdf: ^3.13.0
-  printing: ^5.15.0
   flutter_map: ^8.2.2
   latlong2: ^0.9.1
+  web: ^1.1.1
 dev_dependencies:
   flutter_test:
     sdk: flutter

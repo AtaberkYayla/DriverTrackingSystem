@@ -2,7 +2,8 @@ enum AppRole {
   driver,
   office,
   manager,
-  admin;
+  admin,
+  operator;
 
   static AppRole fromJson(String value) => AppRole.values.byName(value);
 

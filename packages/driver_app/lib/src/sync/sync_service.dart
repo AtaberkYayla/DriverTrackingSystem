@@ -126,6 +126,7 @@ class SyncService {
         irsaliyeNoCikis: row.irsaliyeNoCikis,
         firmaCikisAt: row.firmaCikisAt,
         notlar: row.notlar,
+        notlarCikis: row.notlarCikis,
       );
       final saved = await _tripRepository.upsertTripStop(stop);
       await _localStore.stopSenkronizeIsaretle(row.clientStopId, serverId: saved.id);

@@ -36,8 +36,8 @@ class _MainShellState extends ConsumerState<MainShell> {
   @override
   Widget build(BuildContext context) {
     final isManagerOrAdmin = ref.watch(isManagerOrAdminProvider);
-    final isManager = ref.watch(isManagerProvider);
     final isAdmin = ref.watch(isAdminProvider);
+    final isOperator = ref.watch(isOperatorProvider);
 
     final destinations = <_ShellDestination>[
       const _ShellDestination(
@@ -51,7 +51,7 @@ class _MainShellState extends ConsumerState<MainShell> {
           icon: Icons.people_outline,
           content: AccountsScreen(),
         ),
-      if (!isManager)
+      if (isAdmin)
         const _ShellDestination(
           label: 'Master Veri',
           icon: Icons.storage_outlined,
@@ -63,7 +63,7 @@ class _MainShellState extends ConsumerState<MainShell> {
           icon: Icons.mail_outline,
           content: MailSettingsScreen(),
         ),
-      if (isManagerOrAdmin)
+      if (isManagerOrAdmin || isOperator)
         const _ShellDestination(
           label: 'Sefer Raporu',
           icon: Icons.description_outlined,
@@ -108,10 +108,23 @@ class _MainShellState extends ConsumerState<MainShell> {
                 alignment: Alignment.bottomLeft,
                 child: Padding(
                   padding: const EdgeInsets.only(bottom: 16, left: 16),
-                  child: TextButton.icon(
-                    onPressed: () => ref.read(authRepositoryProvider).signOut(),
-                    icon: const Icon(Icons.logout),
-                    label: const Text('Çıkış Yap'),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      TextButton.icon(
+                        onPressed: () => ref.read(authRepositoryProvider).signOut(),
+                        icon: const Icon(Icons.logout),
+                        label: const Text('Çıkış Yap'),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.only(left: 12, top: 4),
+                        child: Text(
+                          'v1.0.0',
+                          style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),

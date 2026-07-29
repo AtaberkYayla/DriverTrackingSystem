@@ -31,4 +31,5 @@ const _$AppRoleEnumMap = {
   AppRole.office: 'office',
   AppRole.manager: 'manager',
   AppRole.admin: 'admin',
+  AppRole.operator: 'operator',
 };

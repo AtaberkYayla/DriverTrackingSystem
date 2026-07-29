@@ -5,15 +5,22 @@ import 'package:intl/intl.dart';
 
 import '../../providers/app_providers.dart';
 import '../trip_detail/trip_detail_screen.dart';
+import 'create_trip_screen.dart';
 
 class TripListScreen extends ConsumerWidget {
   const TripListScreen({super.key});
+
+  void _yenile(WidgetRef ref) {
+    ref.invalidate(tripListProvider);
+    ref.invalidate(referenceDataProvider);
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final tripsAsync = ref.watch(tripListProvider);
     final refDataAsync = ref.watch(referenceDataProvider);
     final dateFormat = DateFormat('dd.MM.yyyy HH:mm');
+    final seferOlusturabilir = ref.watch(isManagerOrAdminProvider) || ref.watch(isOperatorProvider);
 
     // Onceki basariyla yuklenen veriyi elde tutup sadece arka planda tazeler;
     // boylece 1 dakikalik otomatik yenilemede tum liste CircularProgressIndicator
@@ -52,6 +59,13 @@ class TripListScreen extends ConsumerWidget {
             const Text('Seferler'),
           ],
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            tooltip: 'Yenile',
+            onPressed: () => _yenile(ref),
+          ),
+        ],
       ),
       body: Column(
         children: [
@@ -61,6 +75,15 @@ class TripListScreen extends ConsumerWidget {
           Expanded(child: body),
         ],
       ),
+      floatingActionButton: seferOlusturabilir
+          ? FloatingActionButton.extended(
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const CreateTripScreen()),
+              ),
+              icon: const Icon(Icons.add),
+              label: const Text('Sefer Oluştur'),
+            )
+          : null,
     );
   }
 }

@@ -7,6 +7,7 @@ import '../../providers/app_providers.dart';
 const _rolAdlari = {
   AppRole.admin: 'Admin',
   AppRole.manager: 'Yönetici',
+  AppRole.operator: 'Operatör',
   AppRole.office: 'Onay Verici',
   AppRole.driver: 'Şoför',
 };
@@ -32,7 +33,13 @@ class AccountsScreen extends ConsumerWidget {
           return ListView(
             padding: const EdgeInsets.all(8),
             children: [
-              for (final rol in [AppRole.admin, AppRole.manager, AppRole.office, AppRole.driver])
+              for (final rol in [
+                AppRole.admin,
+                AppRole.manager,
+                AppRole.operator,
+                AppRole.office,
+                AppRole.driver,
+              ])
                 if (gruplar[rol]!.isNotEmpty) ...[
                   Padding(
                     padding: const EdgeInsets.fromLTRB(8, 16, 8, 4),
@@ -114,16 +121,16 @@ class AccountsScreen extends ConsumerWidget {
     }
 
     // Onay Verici (office) hesabi artik olusturulmuyor - admin_web'e sadece
-    // yonetici/admin girer. Yonetici sadece sofor hesabi acabilir; admin
+    // yonetici/admin girer. Yonetici sofor/operator hesabi acabilir; admin
     // ayrica baska yonetici/admin de acabilir.
     final secilebilirRoller = isAdmin
-        ? const [AppRole.driver, AppRole.manager, AppRole.admin]
-        : const [AppRole.driver];
+        ? const [AppRole.driver, AppRole.operator, AppRole.manager, AppRole.admin]
+        : const [AppRole.driver, AppRole.operator];
 
     final fullNameController = TextEditingController(text: account?.fullName);
     final usernameController = TextEditingController(text: account?.username);
     final passwordController = TextEditingController();
-    var seciliRol = account?.role ?? AppRole.office;
+    var seciliRol = account?.role ?? AppRole.driver;
 
     final kaydet = await showDialog<bool>(
       context: context,

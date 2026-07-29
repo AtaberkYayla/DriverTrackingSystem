@@ -276,15 +276,21 @@ $bankaTuruId = $pdo->prepare('SELECT id FROM trip_types WHERE code = ?');
 $bankaTuruId->execute(['BANKA']);
 $bankaTuruId = $bankaTuruId->fetchColumn();
 
+// Kategori (company_trip_types) baglantisi SADECE sirket ilk kez bu script
+// tarafindan olusturulurken yapilir - daha sonra Master Veri Yonetimi >
+// Sirketler ekranindan tamamen serbestce yonetilir (panelde kategori
+// kaldirilirsa kalici olur). Script sonradan tekrar calistirilirsa (idempotent
+// oldugu icin) zaten var olan sirketlerin kategorilerine DOKUNULMAZ.
 $sirketSayisi = 0;
 foreach ($sirketler as $name) {
     $companyExists->execute([$name]);
     $existing = $companyExists->fetch();
-    $companyId = $existing !== false ? $existing['id'] : uuidv4();
-    if ($existing === false) {
-        $insertCompany->execute([$companyId, $name]);
-        $sirketSayisi++;
+    if ($existing !== false) {
+        continue;
     }
+    $companyId = uuidv4();
+    $insertCompany->execute([$companyId, $name]);
+    $sirketSayisi++;
     foreach ($irsaliyeliTurIdleri as $tripTypeId) {
         $linkCompanyTripType->execute([$companyId, $tripTypeId]);
     }
@@ -294,11 +300,12 @@ $bankaSayisi = 0;
 foreach ($bankalar as $name) {
     $companyExists->execute([$name]);
     $existing = $companyExists->fetch();
-    $companyId = $existing !== false ? $existing['id'] : uuidv4();
-    if ($existing === false) {
-        $insertCompany->execute([$companyId, $name]);
-        $bankaSayisi++;
+    if ($existing !== false) {
+        continue;
     }
+    $companyId = uuidv4();
+    $insertCompany->execute([$companyId, $name]);
+    $bankaSayisi++;
     if ($bankaTuruId !== false) {
         $linkCompanyTripType->execute([$companyId, $bankaTuruId]);
     }

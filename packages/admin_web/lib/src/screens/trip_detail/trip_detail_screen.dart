@@ -35,6 +35,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
   late final _gidilenSirketFreeController = TextEditingController(text: _stop.gidilenSirketFree);
   late final _irsaliyeNoGirisController = TextEditingController(text: _stop.irsaliyeNoGiris);
   late final _irsaliyeNoCikisController = TextEditingController(text: _stop.irsaliyeNoCikis);
+  late final _notlarCikisController = TextEditingController(text: _stop.notlarCikis);
   late String _seciliVehicleId = _trip.vehicleId;
   late final _tarihController = TextEditingController(text: _trip.tarih);
   late DateTime? _fabrikaCikisAt = _trip.fabrikaCikisAt;
@@ -50,6 +51,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
     _gidilenSirketFreeController.dispose();
     _irsaliyeNoGirisController.dispose();
     _irsaliyeNoCikisController.dispose();
+    _notlarCikisController.dispose();
     _tarihController.dispose();
     super.dispose();
   }
@@ -109,6 +111,9 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
         onaylandiAt: _stop.onaylandiAt,
         seferDurumu: _stop.seferDurumu,
         notlar: _stop.notlar,
+        notlarCikis: _notlarCikisController.text.trim().isEmpty
+            ? null
+            : _notlarCikisController.text.trim(),
       ));
       await repo.updateTrip(Trip(
         id: _trip.id,
@@ -161,6 +166,13 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
     final refDataAsync = ref.watch(referenceDataProvider);
     final dateFormat = DateFormat('dd.MM.yyyy HH:mm');
     final isManagerOrAdmin = ref.watch(isManagerOrAdminProvider);
+    final isOperator = ref.watch(isOperatorProvider);
+    final currentUserId = ref.watch(currentProfileProvider).value?.id;
+    // Operator sadece admin_web'den kendi olusturdugu (created_by_user_id)
+    // seferi duzenleyebilir; manager/admin icin kisitlama yok (bkz.
+    // backend/lib_auth.php requireTripOwnershipIfOperator).
+    final duzenleyebilir =
+        isManagerOrAdmin || (isOperator && trip.createdByUserId != null && trip.createdByUserId == currentUserId);
 
     return Scaffold(
       appBar: AppBar(
@@ -199,6 +211,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
                 ),
                 _bilgiSatiri('İrsaliye No (Giriş)', stop.irsaliyeNoGiris ?? '-'),
                 _bilgiSatiri('İrsaliye No (Çıkış)', stop.irsaliyeNoCikis ?? '-'),
+                _bilgiSatiri('Not / Açıklama (Çıkış)', stop.notlarCikis ?? '-'),
                 _bilgiSatiri(
                   'Fabrika Çıkış',
                   _fabrikaCikisAt == null ? '-' : dateFormat.format(_fabrikaCikisAt!),
@@ -209,7 +222,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
                 ),
               ] else
                 _detayDuzenlemeFormu(context, refData),
-              if (isManagerOrAdmin) ...[
+              if (duzenleyebilir) ...[
                 const SizedBox(height: 12),
                 OutlinedButton.icon(
                   icon: Icon(_duzenlemeAcik ? Icons.close : Icons.edit_outlined),
@@ -237,52 +250,65 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
               const Divider(height: 32),
               Text('Onay / Değerlendirme', style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 12),
-              DropdownButtonFormField<OnayDurumu>(
-                initialValue: _onayDurumu,
-                decoration: const InputDecoration(
-                  labelText: 'Onay Durumu',
-                  border: OutlineInputBorder(),
+              // Onay verme yetkisi sadece yonetici/admin'de - operator (ve
+              // yanlislikla buraya erisen sofor gibi diger roller) bu
+              // degerleri sadece salt-okunur gorur.
+              if (isManagerOrAdmin) ...[
+                DropdownButtonFormField<OnayDurumu>(
+                  initialValue: _onayDurumu,
+                  decoration: const InputDecoration(
+                    labelText: 'Onay Durumu',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: OnayDurumu.values
+                      .map((d) => DropdownMenuItem(
+                            value: d,
+                            child: Text(d == OnayDurumu.onaylandi ? 'Onaylandı' : 'Onay Bekleniyor'),
+                          ))
+                      .toList(),
+                  onChanged: (v) => setState(() => _onayDurumu = v!),
                 ),
-                items: OnayDurumu.values
-                    .map((d) => DropdownMenuItem(
-                          value: d,
-                          child: Text(d == OnayDurumu.onaylandi ? 'Onaylandı' : 'Onay Bekleniyor'),
-                        ))
-                    .toList(),
-                onChanged: (v) => setState(() => _onayDurumu = v!),
-              ),
-              const SizedBox(height: 16),
-              DropdownButtonFormField<SeferDurumu>(
-                initialValue: _seferDurumu,
-                decoration: const InputDecoration(
-                  labelText: 'Sefer Durumu',
-                  border: OutlineInputBorder(),
+                const SizedBox(height: 16),
+                DropdownButtonFormField<SeferDurumu>(
+                  initialValue: _seferDurumu,
+                  decoration: const InputDecoration(
+                    labelText: 'Sefer Durumu',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: const [
+                    DropdownMenuItem(
+                        value: SeferDurumu.devamEdiyor, child: Text('Devam Ediyor')),
+                    DropdownMenuItem(value: SeferDurumu.basarili, child: Text('Başarılı')),
+                    DropdownMenuItem(value: SeferDurumu.basarisiz, child: Text('Başarısız')),
+                  ],
+                  onChanged: (v) => setState(() => _seferDurumu = v!),
                 ),
-                items: const [
-                  DropdownMenuItem(
-                      value: SeferDurumu.devamEdiyor, child: Text('Devam Ediyor')),
-                  DropdownMenuItem(value: SeferDurumu.basarili, child: Text('Başarılı')),
-                  DropdownMenuItem(value: SeferDurumu.basarisiz, child: Text('Başarısız')),
-                ],
-                onChanged: (v) => setState(() => _seferDurumu = v!),
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _notlarController,
-                decoration: const InputDecoration(
-                  labelText: 'Notlar / Açıklamalar',
-                  border: OutlineInputBorder(),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _notlarController,
+                  decoration: const InputDecoration(
+                    labelText: 'Notlar / Açıklamalar',
+                    border: OutlineInputBorder(),
+                  ),
+                  maxLines: 3,
                 ),
-                maxLines: 3,
-              ),
-              const SizedBox(height: 24),
-              FilledButton(
-                onPressed: _kaydediliyor ? null : _kaydet,
-                child: _kaydediliyor
-                    ? const SizedBox(
-                        width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                    : const Text('Kaydet'),
-              ),
+                const SizedBox(height: 24),
+                FilledButton(
+                  onPressed: _kaydediliyor ? null : _kaydet,
+                  child: _kaydediliyor
+                      ? const SizedBox(
+                          width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                      : const Text('Kaydet'),
+                ),
+              ] else ...[
+                _bilgiSatiri('Onay Durumu', _onayDurumu == OnayDurumu.onaylandi ? 'Onaylandı' : 'Onay Bekleniyor'),
+                _bilgiSatiri('Sefer Durumu', switch (_seferDurumu) {
+                  SeferDurumu.devamEdiyor => 'Devam Ediyor',
+                  SeferDurumu.basarili => 'Başarılı',
+                  SeferDurumu.basarisiz => 'Başarısız',
+                }),
+                _bilgiSatiri('Notlar / Açıklamalar', _notlarController.text.isEmpty ? '-' : _notlarController.text),
+              ],
             ],
           );
         },
@@ -388,6 +414,13 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
           controller: _irsaliyeNoCikisController,
           decoration: const InputDecoration(
               labelText: 'İrsaliye No (Çıkış)', border: OutlineInputBorder()),
+        ),
+        const SizedBox(height: 16),
+        TextFormField(
+          controller: _notlarCikisController,
+          decoration: const InputDecoration(
+              labelText: 'Not / Açıklama (Çıkış)', border: OutlineInputBorder()),
+          maxLines: 3,
         ),
         const SizedBox(height: 16),
         _tarihSaatSecici(

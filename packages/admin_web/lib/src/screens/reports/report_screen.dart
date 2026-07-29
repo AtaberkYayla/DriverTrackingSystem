@@ -3,9 +3,9 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import 'package:printing/printing.dart';
 
 import '../../providers/app_providers.dart';
+import 'native_pdf_preview.dart';
 import 'trip_report_pdf.dart';
 
 class ReportScreen extends ConsumerStatefulWidget {
@@ -185,19 +185,7 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
                       if (snapshot.hasError) {
                         return Center(child: Text('Rapor oluşturulamadı: ${snapshot.error}'));
                       }
-                      return PdfPreview(
-                        // PdfPreview PDF baytlarini web'de bir Worker'a "transfer"
-                        // ederek gonderiyor (kopyalamadan) - ayni Uint8List'i
-                        // birden fazla kez dondurmek (ornegin paylas/indir veya
-                        // yazdirma tekrar cagirdiginda) ikinci seferde tarayicida
-                        // "ArrayBuffer is detached" hatasina yol aciyordu. Her
-                        // cagrida taze bir kopya vererek bunu onluyoruz.
-                        build: (format) async => Uint8List.fromList(snapshot.data!),
-                        canChangePageFormat: false,
-                        canChangeOrientation: false,
-                        canDebug: false,
-                        pdfFileName: 'sefer-raporu.pdf',
-                      );
+                      return NativePdfPreview(key: ValueKey(_pdfFuture), bytes: snapshot.data!);
                     },
                   ),
           ),

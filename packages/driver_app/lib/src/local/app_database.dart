@@ -47,6 +47,7 @@ class TripStopsCache extends Table {
   TextColumn get irsaliyeNoCikis => text().nullable()();
   DateTimeColumn get firmaCikisAt => dateTime().nullable()();
   TextColumn get notlar => text().nullable()();
+  TextColumn get notlarCikis => text().nullable()();
 
   BoolColumn get synced => boolean().withDefault(const Constant(false))();
   IntColumn get retryCount => integer().withDefault(const Constant(0))();
@@ -120,7 +121,7 @@ class AppDatabase extends _$AppDatabase {
         ));
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(

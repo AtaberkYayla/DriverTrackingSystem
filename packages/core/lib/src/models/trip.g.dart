@@ -18,6 +18,7 @@ Trip _$TripFromJson(Map<String, dynamic> json) => Trip(
   fabrikaGirisAt: json['fabrika_giris_at'] == null
       ? null
       : DateTime.parse(json['fabrika_giris_at'] as String),
+  createdByUserId: json['created_by_user_id'] as String?,
 );
 
 Map<String, dynamic> _$TripToJson(Trip instance) => <String, dynamic>{
@@ -28,4 +29,5 @@ Map<String, dynamic> _$TripToJson(Trip instance) => <String, dynamic>{
   'tarih': instance.tarih,
   'fabrika_cikis_at': instance.fabrikaCikisAt?.toIso8601String(),
   'fabrika_giris_at': instance.fabrikaGirisAt?.toIso8601String(),
+  'created_by_user_id': instance.createdByUserId,
 };

@@ -10,18 +10,18 @@ import '../../providers/app_providers.dart';
 const _varsayilanMerkez = LatLng(38.4237, 27.1428);
 
 /// FlutterMap (ve MapController) burada SADECE BIR KEZ kurulur ve bir daha
-/// yeniden olusturulmaz; 6 saniyelik konum yenilemesi (autoRefreshTickProvider)
+/// yeniden olusturulmaz; 5 dakikalik konum yenilemesi (mapAutoRefreshTickProvider)
 /// sadece asagidaki _CanliMarkerKatmani alt agacini gunceller. Aksi halde -
 /// yani FlutterMap'i her tikte options ile yeniden olusturmak - soforun
 /// devam eden zoom/pan hareketini kesiyor ve tarayicida donmaya yol aciyordu.
-class LiveMapScreen extends StatefulWidget {
+class LiveMapScreen extends ConsumerStatefulWidget {
   const LiveMapScreen({super.key});
 
   @override
-  State<LiveMapScreen> createState() => _LiveMapScreenState();
+  ConsumerState<LiveMapScreen> createState() => _LiveMapScreenState();
 }
 
-class _LiveMapScreenState extends State<LiveMapScreen> {
+class _LiveMapScreenState extends ConsumerState<LiveMapScreen> {
   final _mapController = MapController();
 
   @override
@@ -33,7 +33,16 @@ class _LiveMapScreenState extends State<LiveMapScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Canlı Konum Takibi')),
+      appBar: AppBar(
+        title: const Text('Canlı Konum Takibi'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            tooltip: 'Yenile',
+            onPressed: () => ref.invalidate(driverLocationsProvider),
+          ),
+        ],
+      ),
       body: Column(
         children: [
           Expanded(

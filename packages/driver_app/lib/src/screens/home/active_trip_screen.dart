@@ -306,6 +306,7 @@ class _ActiveTripScreenState extends ConsumerState<ActiveTripScreen> {
 
   Future<void> _firmaCikisYap(TripsCacheData trip, TripStopsCacheData openStop) async {
     var irsaliyeNoCikis = openStop.irsaliyeNoCikis;
+    var notlarCikis = openStop.notlarCikis;
     final tripTypes = await ref.read(tripTypesProvider.future);
     TripTypesCacheData? tripType;
     for (final t in tripTypes) {
@@ -314,11 +315,18 @@ class _ActiveTripScreenState extends ConsumerState<ActiveTripScreen> {
         break;
       }
     }
-    // İrsaliye no zorunlu değil, ama bu 3 sefer türünde yine de sorulur -
-    // sofor isterse boş geçebilir.
-    if (tripType?.requiresIrsaliye ?? false) {
-      if (!mounted) return;
-      irsaliyeNoCikis = await _irsaliyeNoIste(context, mevcut: irsaliyeNoCikis);
+    // İrsaliye no sadece bu 3 sefer turunde sorulur; cikis notu ise turden
+    // bagimsiz her zaman sorulur (cikista bir sey olduysa bildirilebilsin).
+    if (!mounted) return;
+    final sonuc = await _cikisBilgileriIste(
+      context,
+      irsaliyeIste: tripType?.requiresIrsaliye ?? false,
+      mevcutIrsaliyeNo: irsaliyeNoCikis,
+      mevcutNot: notlarCikis,
+    );
+    if (sonuc != null) {
+      irsaliyeNoCikis = sonuc.irsaliyeNo;
+      notlarCikis = sonuc.not;
     }
 
     setState(() => _islemDevamEdiyor = true);
@@ -338,6 +346,7 @@ class _ActiveTripScreenState extends ConsumerState<ActiveTripScreen> {
           irsaliyeNoGiris: Value(openStop.irsaliyeNoGiris),
           irsaliyeNoCikis: Value(irsaliyeNoCikis),
           notlar: Value(openStop.notlar),
+          notlarCikis: Value(notlarCikis),
           firmaCikisAt: Value(now),
           synced: const Value(false),
           updatedLocallyAt: Value(now),
@@ -346,22 +355,49 @@ class _ActiveTripScreenState extends ConsumerState<ActiveTripScreen> {
     if (mounted) setState(() => _islemDevamEdiyor = false);
   }
 
-  /// İrsaliye no zorunlu değildir - sofor "Boş Geç" ile atlayabilir ya da
-  /// pencereyi kapatabilir, her durumda firma çıkışı normal şekilde devam eder.
-  Future<String?> _irsaliyeNoIste(BuildContext context, {String? mevcut}) {
-    final controller = TextEditingController(text: mevcut ?? '');
-    return showDialog<String>(
+  /// Ne irsaliye no ne de cikis notu zorunludur - sofor "Boş Geç" ile
+  /// atlayabilir ya da pencereyi kapatabilir, her durumda firma çıkışı
+  /// normal şekilde devam eder. İrsaliye no sadece irsaliyeIste true iken
+  /// gösterilir, cikis notu ise her zaman - cikista bir sey olduysa (hasar,
+  /// gecikme, vb.) sofor bunu turden bagimsiz bildirebilsin diye.
+  Future<({String? irsaliyeNo, String? not})?> _cikisBilgileriIste(
+    BuildContext context, {
+    required bool irsaliyeIste,
+    String? mevcutIrsaliyeNo,
+    String? mevcutNot,
+  }) {
+    final irsaliyeController = TextEditingController(text: mevcutIrsaliyeNo ?? '');
+    final notController = TextEditingController(text: mevcutNot ?? '');
+    return showDialog<({String? irsaliyeNo, String? not})>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('İrsaliye No (Çıkış)'),
-        content: TextFormField(
-          controller: controller,
-          autofocus: true,
-          decoration: const InputDecoration(
-            labelText: 'İrsaliye No',
-            helperText: 'Biliyorsanız girin, zorunlu değil',
-            border: OutlineInputBorder(),
-          ),
+        title: const Text('Firma Çıkış Bilgileri'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (irsaliyeIste) ...[
+              TextFormField(
+                controller: irsaliyeController,
+                autofocus: true,
+                decoration: const InputDecoration(
+                  labelText: 'İrsaliye No (Çıkış)',
+                  helperText: 'Biliyorsanız girin, zorunlu değil',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
+            TextFormField(
+              controller: notController,
+              autofocus: !irsaliyeIste,
+              decoration: const InputDecoration(
+                labelText: 'Not / Açıklama (Çıkış)',
+                helperText: 'Çıkışta bir şey olduysa yazın, zorunlu değil',
+                border: OutlineInputBorder(),
+              ),
+              maxLines: 3,
+            ),
+          ],
         ),
         actions: [
           TextButton(
@@ -370,8 +406,12 @@ class _ActiveTripScreenState extends ConsumerState<ActiveTripScreen> {
           ),
           FilledButton(
             onPressed: () {
-              final text = controller.text.trim();
-              Navigator.of(context).pop(text.isEmpty ? null : text);
+              final irsaliye = irsaliyeController.text.trim();
+              final not = notController.text.trim();
+              Navigator.of(context).pop((
+                irsaliyeNo: irsaliye.isEmpty ? null : irsaliye,
+                not: not.isEmpty ? null : not,
+              ));
             },
             child: const Text('Kaydet'),
           ),

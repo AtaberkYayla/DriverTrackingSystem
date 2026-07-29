@@ -15,6 +15,7 @@ class Trip {
     required this.tarih,
     this.fabrikaCikisAt,
     this.fabrikaGirisAt,
+    this.createdByUserId,
   });
 
   final String id;
@@ -24,6 +25,12 @@ class Trip {
   final String tarih;
   final DateTime? fabrikaCikisAt;
   final DateTime? fabrikaGirisAt;
+
+  /// admin_web'den elle (manager/admin/operator tarafindan) olusturulan
+  /// seferlerde kim olusturduysa o kullanicinin id'sini tutar; driver_app'ten
+  /// gelen seferlerde hep null'dur. Operator'un sadece kendi olusturdugu
+  /// seferi duzenleyebilmesi bu alana gore arayuzde de yansitilir.
+  final String? createdByUserId;
 
   bool get aktifMi => fabrikaGirisAt == null;
 

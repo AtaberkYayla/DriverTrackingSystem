@@ -1,12 +1,15 @@
 <?php
 require_once __DIR__ . '/lib_bootstrap.php';
 
-$user = requireRole($pdo, ['manager', 'admin']);
+// operator sadece admin_web'den kendi olusturdugu (created_by_user_id) seferi
+// duzenleyebilir; manager/admin icin kisitlama yok (mevcut genis yetki).
+$user = requireRole($pdo, ['manager', 'admin', 'operator']);
 $body = readJsonBody();
 $id = (string) ($body['id'] ?? '');
 if ($id === '') {
     json_error('invalid_request', 'id zorunlu', 422);
 }
+requireTripOwnershipIfOperator($pdo, $user, $id);
 
 $fields = [];
 $params = [];

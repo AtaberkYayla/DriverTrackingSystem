@@ -1,8 +1,9 @@
 <?php
 require_once __DIR__ . '/lib_bootstrap.php';
 
-// Eski kuralda oldugu gibi soforden gelen detaylari sadece manager/admin duzeltebilir.
-$user = requireRole($pdo, ['manager', 'admin']);
+// Soforden gelen detaylari manager/admin serbestce duzeltebilir; operator
+// sadece admin_web'den kendi olusturdugu seferin duraklarini duzenleyebilir.
+$user = requireRole($pdo, ['manager', 'admin', 'operator']);
 $body = readJsonBody();
 
 $id = (string) ($body['id'] ?? '');
@@ -10,10 +11,18 @@ if ($id === '') {
     json_error('invalid_request', 'id zorunlu', 422);
 }
 
+$stopStmt = $pdo->prepare('SELECT trip_id FROM trip_stops WHERE id = ?');
+$stopStmt->execute([$id]);
+$stopRow = $stopStmt->fetch();
+if ($stopRow === false) {
+    json_error('not_found', 'Durak bulunamadı', 404);
+}
+requireTripOwnershipIfOperator($pdo, $user, $stopRow['trip_id']);
+
 $editable = [
     'sira', 'firma_giris_at', 'trip_type_id', 'requester_id', 'cikis_nedeni', 'gidilen_il',
     'gidilen_ilce', 'gidilen_sirket_id', 'gidilen_sirket_free', 'irsaliye_no_giris', 'irsaliye_no_cikis',
-    'firma_cikis_at',
+    'firma_cikis_at', 'notlar', 'notlar_cikis',
 ];
 $fields = [];
 $params = [];

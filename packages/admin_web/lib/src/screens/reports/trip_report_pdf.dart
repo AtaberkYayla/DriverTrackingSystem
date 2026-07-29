@@ -24,6 +24,19 @@ class ReportCriteria {
   final DateTime bitis;
 }
 
+/// Rapor kriterlerinden (soför adi/plaka + tarih araligi), indirilen PDF
+/// icin anlamli ve dosya sistemi icin guvenli bir isim uretir.
+/// Ornek: "Sefer_Raporu_Oktay_Yakut_01.07.2026-30.07.2026.pdf"
+String buildReportFileName(ReportCriteria criteria) {
+  final dateFmt = DateFormat('dd.MM.yyyy');
+  final guvenliAd = criteria.secilenAd
+      .trim()
+      .replaceAll(RegExp(r'[<>:"/\\|?*]'), '')
+      .replaceAll(RegExp(r'\s+'), '_');
+  final tarihAraligi = '${dateFmt.format(criteria.baslangic)}-${dateFmt.format(criteria.bitis)}';
+  return 'Sefer_Raporu_${guvenliAd}_$tarihAraligi.pdf';
+}
+
 class _TripGroup {
   _TripGroup(this.trip) : stops = [];
   final Trip trip;

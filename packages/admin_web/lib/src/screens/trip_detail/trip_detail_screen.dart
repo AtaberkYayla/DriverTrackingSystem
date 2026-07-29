@@ -5,6 +5,30 @@ import 'package:intl/intl.dart';
 
 import '../../providers/app_providers.dart';
 
+/// Gidilebilecek lokasyonlar bu sekiz il ile sinirlidir (bkz. driver_app'teki
+/// ayni isimli/amacli liste, trip_detail_form.dart, ve create_trip_screen.dart).
+const _izinVerilenIller = <String>[
+  'İzmir',
+  'Manisa',
+  'İstanbul',
+  'Bursa',
+  'Konya',
+  'Aydın',
+  'Aksaray',
+  'Tekirdağ',
+];
+
+final _gunAyYilFormat = DateFormat('dd.MM.yyyy');
+
+/// "GG.AA.YYYY" metnini DateTime'a cevirir, gecersiz/eksikse null doner.
+DateTime? _gunAyYiliAyristir(String metin) {
+  try {
+    return _gunAyYilFormat.parseStrict(metin.trim());
+  } catch (_) {
+    return null;
+  }
+}
+
 class TripDetailScreen extends ConsumerStatefulWidget {
   const TripDetailScreen({super.key, required this.stopWithTrip});
 
@@ -31,13 +55,17 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
   late final _cikisNedeniController = TextEditingController(text: _stop.cikisNedeni);
   late final _gidilenIlController = TextEditingController(text: _stop.gidilenIl);
   late final _gidilenIlceController = TextEditingController(text: _stop.gidilenIlce);
+  // Kayitli il, _izinVerilenIller listesinden gecerli bir secimle mi
+  // eslesiyor - ilceyi (zorunlu/serbest) buna gore belirlemek icin.
+  late String? _seciliIl = _izinVerilenIller.contains(_stop.gidilenIl) ? _stop.gidilenIl : null;
   late String? _seciliSirketId = _stop.gidilenSirketId;
   late final _gidilenSirketFreeController = TextEditingController(text: _stop.gidilenSirketFree);
   late final _irsaliyeNoGirisController = TextEditingController(text: _stop.irsaliyeNoGiris);
   late final _irsaliyeNoCikisController = TextEditingController(text: _stop.irsaliyeNoCikis);
   late final _notlarCikisController = TextEditingController(text: _stop.notlarCikis);
   late String _seciliVehicleId = _trip.vehicleId;
-  late final _tarihController = TextEditingController(text: _trip.tarih);
+  late final _tarihController =
+      TextEditingController(text: _gunAyYilFormat.format(DateTime.parse(_trip.tarih)));
   late DateTime? _fabrikaCikisAt = _trip.fabrikaCikisAt;
   late DateTime? _fabrikaGirisAt = _trip.fabrikaGirisAt;
   bool _detayKaydediliyor = false;
@@ -76,6 +104,13 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
   }
 
   Future<void> _detaylariKaydet() async {
+    final seciliTarih = _gunAyYiliAyristir(_tarihController.text);
+    if (seciliTarih == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Tarih GG.AA.YYYY formatında olmalı (ör. 30.07.2026).')),
+      );
+      return;
+    }
     setState(() => _detayKaydediliyor = true);
     try {
       final repo = ref.read(tripRepositoryProvider);
@@ -120,7 +155,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
         clientTripId: _trip.clientTripId,
         driverId: _trip.driverId,
         vehicleId: _seciliVehicleId,
-        tarih: _tarihController.text.trim(),
+        tarih: DateFormat('yyyy-MM-dd').format(seciliTarih),
         fabrikaCikisAt: _fabrikaCikisAt,
         fabrikaGirisAt: _fabrikaGirisAt,
       ));
@@ -211,6 +246,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
                 ),
                 _bilgiSatiri('İrsaliye No (Giriş)', stop.irsaliyeNoGiris ?? '-'),
                 _bilgiSatiri('İrsaliye No (Çıkış)', stop.irsaliyeNoCikis ?? '-'),
+                _bilgiSatiri('Not / Açıklama (Giriş)', stop.notlar ?? '-'),
                 _bilgiSatiri('Not / Açıklama (Çıkış)', stop.notlarCikis ?? '-'),
                 _bilgiSatiri(
                   'Fabrika Çıkış',
@@ -321,6 +357,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
     final tripTypesAsync = ref.watch(tripTypesProvider);
     final requestersAsync = ref.watch(requestersProvider);
     final companiesAsync = ref.watch(companiesProvider);
+    final turkeyAsync = ref.watch(turkeyLocationsProvider);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -337,7 +374,24 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
         const SizedBox(height: 16),
         TextFormField(
           controller: _tarihController,
-          decoration: const InputDecoration(labelText: 'Tarih (YYYY-MM-DD)', border: OutlineInputBorder()),
+          decoration: InputDecoration(
+            labelText: 'Tarih (GG.AA.YYYY)',
+            border: const OutlineInputBorder(),
+            suffixIcon: IconButton(
+              icon: const Icon(Icons.calendar_today_outlined),
+              tooltip: 'Takvimden Seç',
+              onPressed: () async {
+                final secilen = await showDatePicker(
+                  context: context,
+                  initialDate: _gunAyYiliAyristir(_tarihController.text) ?? bugununTarihi(),
+                  firstDate: DateTime(2020),
+                  lastDate: DateTime(2100),
+                );
+                if (secilen == null) return;
+                setState(() => _tarihController.text = _gunAyYilFormat.format(secilen));
+              },
+            ),
+          ),
         ),
         const SizedBox(height: 16),
         tripTypesAsync.maybeWhen(
@@ -374,14 +428,9 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
           maxLines: 2,
         ),
         const SizedBox(height: 16),
-        TextFormField(
-          controller: _gidilenIlController,
-          decoration: const InputDecoration(labelText: 'Gidilen İl', border: OutlineInputBorder()),
-        ),
-        const SizedBox(height: 16),
-        TextFormField(
-          controller: _gidilenIlceController,
-          decoration: const InputDecoration(labelText: 'Gidilen İlçe', border: OutlineInputBorder()),
+        turkeyAsync.maybeWhen(
+          data: _ilIlceAlanlari,
+          orElse: () => const LinearProgressIndicator(),
         ),
         const SizedBox(height: 16),
         companiesAsync.maybeWhen(
@@ -438,6 +487,76 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
     );
   }
 
+  /// Gidilen il/ilce alanlari: il, sabit _izinVerilenIller listesinden
+  /// secilir (serbest metne izin verilmez); Izmir/Manisa icin ilce de
+  /// il_ilce.json'daki listeden secilir, digerlerinde ilce serbest metindir.
+  Widget _ilIlceAlanlari(TurkeyLocations turkey) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Autocomplete<String>(
+          optionsBuilder: (value) {
+            if (value.text.isEmpty) return _izinVerilenIller;
+            final q = value.text.toLowerCase();
+            return _izinVerilenIller.where((il) => il.toLowerCase().contains(q));
+          },
+          onSelected: (il) => setState(() {
+            _seciliIl = il;
+            _gidilenIlController.text = il;
+            _gidilenIlceController.clear();
+          }),
+          fieldViewBuilder: (context, controller, focusNode, onSubmit) {
+            controller.text = _gidilenIlController.text;
+            return TextFormField(
+              controller: controller,
+              focusNode: focusNode,
+              decoration: const InputDecoration(labelText: 'Gidilen İl', border: OutlineInputBorder()),
+              onChanged: (v) {
+                _gidilenIlController.text = v;
+                if (_seciliIl != v) {
+                  setState(() {
+                    _seciliIl = null;
+                    _gidilenIlceController.clear();
+                  });
+                }
+              },
+            );
+          },
+        ),
+        if (_seciliIl != null) ...[
+          const SizedBox(height: 16),
+          if (turkey.ilceZorunluMu(_seciliIl!))
+            Autocomplete<String>(
+              key: ValueKey('ilce-$_seciliIl'),
+              optionsBuilder: (value) => turkey.ilceAra(_seciliIl!, value.text),
+              onSelected: (ilce) => _gidilenIlceController.text = ilce,
+              fieldViewBuilder: (context, controller, focusNode, onSubmit) {
+                controller.text = _gidilenIlceController.text;
+                return TextFormField(
+                  controller: controller,
+                  focusNode: focusNode,
+                  decoration:
+                      const InputDecoration(labelText: 'Gidilen İlçe', border: OutlineInputBorder()),
+                  onChanged: (v) => _gidilenIlceController.text = v,
+                );
+              },
+            )
+          else
+            TextFormField(
+              controller: _gidilenIlceController,
+              decoration: const InputDecoration(
+                  labelText: 'Gidilen İlçe (opsiyonel)', border: OutlineInputBorder()),
+            ),
+        ],
+      ],
+    );
+  }
+
+  /// Duzenleme formunun en ustundeki "Tarih" alanindan (GG.AA.YYYY) sefer
+  /// tarihini ayristirir; gecersizse bugune duser. Asagidaki saat secicileri
+  /// artik tarihi tekrar sormuyor, bu tarihi temel alip sadece saat soruyor.
+  DateTime get _seferTarihi => _gunAyYiliAyristir(_tarihController.text) ?? bugununTarihi();
+
   Widget _tarihSaatSecici({
     required String label,
     required DateTime? deger,
@@ -451,19 +570,15 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
         ),
         TextButton(
           onPressed: () async {
-            final tarih = await showDatePicker(
-              context: context,
-              initialDate: deger ?? DateTime.now(),
-              firstDate: DateTime(2020),
-              lastDate: DateTime(2100),
-            );
-            if (tarih == null || !mounted) return;
+            final baseDate = _seferTarihi;
             final saat = await showTimePicker(
               context: context,
               initialTime: TimeOfDay.fromDateTime(deger ?? DateTime.now()),
+              initialEntryMode: TimePickerEntryMode.input,
+              helpText: '$label saati (${DateFormat('dd.MM.yyyy').format(baseDate)})',
             );
             if (saat == null) return;
-            onChanged(DateTime(tarih.year, tarih.month, tarih.day, saat.hour, saat.minute));
+            onChanged(DateTime(baseDate.year, baseDate.month, baseDate.day, saat.hour, saat.minute));
           },
           child: const Text('Seç'),
         ),

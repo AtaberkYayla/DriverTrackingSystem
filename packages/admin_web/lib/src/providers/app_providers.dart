@@ -81,6 +81,10 @@ final companiesProvider = FutureProvider<List<Company>>((ref) {
   return ref.watch(masterDataRepositoryProvider).fetchCompanies(sadeceAktif: false);
 });
 
+final turkeyLocationsProvider = FutureProvider<TurkeyLocations>((ref) {
+  return TurkeyLocations.load();
+});
+
 class TripFilters {
   const TripFilters({
     this.driverId,

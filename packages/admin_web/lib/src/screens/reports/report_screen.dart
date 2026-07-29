@@ -22,6 +22,7 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
   late DateTime _baslangic = DateTime(bugununTarihi().year, bugununTarihi().month, 1);
   DateTime _bitis = bugununTarihi();
   Future<Uint8List>? _pdfFuture;
+  ReportCriteria? _criteria;
   String? _hata;
 
   bool get _hazirMi => _mod == ReportMode.sofor ? _seciliDriverId != null : _seciliVehicleId != null;
@@ -59,16 +60,18 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
           ? refData.surucuAdi(_seciliDriverId!)
           : refData.aracPlakasi(_seciliVehicleId!);
 
+      final criteria = ReportCriteria(
+        mode: _mod,
+        secilenAd: secilenAd,
+        baslangic: _baslangic,
+        bitis: _bitis,
+      );
       setState(() {
+        _criteria = criteria;
         _pdfFuture = buildTripReportPdf(
           rows: rows,
           refData: refData,
-          criteria: ReportCriteria(
-            mode: _mod,
-            secilenAd: secilenAd,
-            baslangic: _baslangic,
-            bitis: _bitis,
-          ),
+          criteria: criteria,
           olusturanAdi: profile?.fullName ?? '-',
         );
       });
@@ -162,6 +165,20 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
                   label: const Text('Rapor Oluştur'),
                   onPressed: _hazirMi ? _raporOlustur : null,
                 ),
+                if (_pdfFuture != null && _criteria != null)
+                  FutureBuilder<Uint8List>(
+                    future: _pdfFuture,
+                    builder: (context, snapshot) {
+                      final bytes = snapshot.data;
+                      return OutlinedButton.icon(
+                        icon: const Icon(Icons.download_outlined),
+                        label: const Text('İndir'),
+                        onPressed: bytes == null
+                            ? null
+                            : () => downloadPdfBytes(bytes, buildReportFileName(_criteria!)),
+                      );
+                    },
+                  ),
               ],
             ),
           ),

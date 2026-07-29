@@ -13,6 +13,36 @@ String _createPdfObjectUrl(Uint8List bytes) {
   return web.URL.createObjectURL(blob);
 }
 
+/// PDF byte'larini, taraycinin varsayilan indirme davranisina (blob URL'i
+/// PDF goruntuleyicisinde acip generic bir isimle indirmesine) birakmadan,
+/// istenen dosya adiyla dogrudan indirtir.
+///
+/// MIME tipi bilinclieklde 'application/pdf' DEGIL, 'application/octet-stream'
+/// olarak olusturuluyor: Chrome, `download` attribute'lu bir blob:pdf linkine
+/// tiklandiginda bile bunu kendi PDF goruntuleyicisiyle acmaya calisip
+/// `download` degerini yok sayabiliyor (sonuc: dosya, adi yerine blob'un ic
+/// UUID'siyle iniyor). octet-stream, bu "akilli" davranisi devre disi
+/// birakip gercek bir dosya indirmesini garantiliyor.
+///
+/// revokeObjectURL cagrisi bir sonraki event loop turuna erteleniyor:
+/// click() tetiklenen indirme islemi asenkron oldugu icin URL'i hemen
+/// iptal etmek bazi taraycilarda indirmeyi (dosya adi dahil) bozabiliyor.
+void downloadPdfBytes(Uint8List bytes, String fileName) {
+  final blob = web.Blob(
+    [bytes.toJS].toJS,
+    web.BlobPropertyBag(type: 'application/octet-stream'),
+  );
+  final url = web.URL.createObjectURL(blob);
+  final anchor = web.HTMLAnchorElement()
+    ..href = url
+    ..download = fileName
+    ..style.display = 'none';
+  web.document.body?.append(anchor);
+  anchor.click();
+  anchor.remove();
+  Future.delayed(const Duration(seconds: 5), () => web.URL.revokeObjectURL(url));
+}
+
 /// PDF onizlemesini `printing` paketinin pdf.js tabanli rasterizasyonuna
 /// (web'de pdf.js'in yuklenmesi CDN erisimine, plugin registration'a ve
 /// bir Worker'in basarili baslamasina bagli - bunlardan biri aksarsa

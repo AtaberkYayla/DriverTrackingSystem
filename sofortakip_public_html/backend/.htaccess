@@ -1,0 +1,21 @@
+# Apache'nin Authorization header'ini PHP'ye (PHP-FPM/mod_php) iletmesini
+# saglar - bu satir olmadan Bearer token'lar bazi Hestia/Apache
+# kurulumlarinda $_SERVER['HTTP_AUTHORIZATION'] icinde hic gorunmez.
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteCond %{HTTP:Authorization} ^(.*)$
+  RewriteRule .* - [E=HTTP_AUTHORIZATION:%1]
+</IfModule>
+
+# config.php, .sql/.md dosyalari ve lib_*.php yardimci dosyalarina (sadece
+# require_once ile dahil edilmek icin var, dogrudan tarayicidan cagrilmamali)
+# dogrudan tarayicidan erisimi engelle.
+<FilesMatch "\.(sql|md)$|^config\.php$|^lib_.*\.php$">
+  <IfModule mod_authz_core.c>
+    Require all denied
+  </IfModule>
+  <IfModule !mod_authz_core.c>
+    Order allow,deny
+    Deny from all
+  </IfModule>
+</FilesMatch>

@@ -108,6 +108,13 @@ List<_TripGroup> _grupla(List<TripStopWithTrip> rows) {
     });
     if (row.stop != null) grup.stops.add(row.stop!);
   }
+  // Backend'in duz liste siralamasi (butun seferler arasi tek ORDER BY) bir
+  // seferin duraklarini kesintisiz/kronolojik birakmayabilir (baska seferler
+  // araya girebilir); bu yuzden her grup kendi icinde en yeni ustte olacak
+  // sekilde ayrica sıralanir.
+  for (final grup in gruplar.values) {
+    grup.stops.sort((a, b) => b.firmaGirisAt.compareTo(a.firmaGirisAt));
+  }
   return [for (final id in sira) gruplar[id]!];
 }
 

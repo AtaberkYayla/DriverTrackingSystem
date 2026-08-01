@@ -64,7 +64,7 @@ $sql = "SELECT t.id, t.client_trip_id, t.driver_id, t.vehicle_id, t.tarih,
 if ($where) {
     $sql .= ' WHERE ' . implode(' AND ', $where);
 }
-$sql .= " ORDER BY t.created_at DESC LIMIT $limit";
+$sql .= " ORDER BY COALESCE(s.firma_giris_at, t.fabrika_cikis_at, t.created_at) DESC LIMIT $limit";
 
 $stmt = $pdo->prepare($sql);
 $stmt->execute($params);

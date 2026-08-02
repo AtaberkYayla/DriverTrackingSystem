@@ -4,8 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../providers/app_providers.dart';
-import '../trip_detail/trip_detail_screen.dart';
+import '../trip_detail/trip_edit_screen.dart';
 import 'create_trip_screen.dart';
+import 'quick_actions.dart';
 
 class TripListScreen extends ConsumerWidget {
   const TripListScreen({super.key});
@@ -51,15 +52,20 @@ class TripListScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Image.asset(DedemBrand.faviconAssetPath, package: 'core', height: 28),
-            const SizedBox(width: 12),
-            const Text('Seferler'),
-          ],
-        ),
+        title: const Text('Seferler'),
         actions: [
+          if (seferOlusturabilir)
+            IconButton(
+              icon: const Icon(Icons.add_location_alt_outlined),
+              tooltip: 'Durak Ekle',
+              onPressed: () => showDurakEkleDialog(context, ref),
+            ),
+          if (ref.watch(isManagerOrAdminProvider))
+            IconButton(
+              icon: const Icon(Icons.swap_horiz),
+              tooltip: 'Fabrika Giriş/Çıkış (Sefer Böl)',
+              onPressed: () => showFabrikaBolmeDialog(context, ref),
+            ),
           IconButton(
             icon: const Icon(Icons.refresh),
             tooltip: 'Yenile',
@@ -215,6 +221,15 @@ class _TripGroupCard extends ConsumerWidget {
           visualDensity: VisualDensity.compact,
           side: BorderSide.none,
         ),
+        IconButton(
+          icon: const Icon(Icons.edit_outlined),
+          tooltip: 'Seferi Düzenle',
+          onPressed: () => Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => TripEditScreen(trip: trip, initialStops: grup.stops),
+            ),
+          ),
+        ),
         if (isManagerOrAdmin)
           IconButton(
             icon: const Icon(Icons.delete_outline),
@@ -238,6 +253,11 @@ class _TripGroupCard extends ConsumerWidget {
           subtitle: trip.fabrikaCikisAt != null
               ? const Text('Firma girişi bekleniyor · henüz bir firmaya uğramadı.')
               : const Text('Henüz bir firmaya uğramadı (Fabrika Çıkış yapıldı, yolda).'),
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => TripEditScreen(trip: trip, initialStops: grup.stops),
+            ),
+          ),
         ),
       );
     }
@@ -290,12 +310,33 @@ class _TripGroupCard extends ConsumerWidget {
             ),
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute(
-                builder: (_) => TripDetailScreen(stopWithTrip: TripStopWithTrip(trip: trip, stop: stop)),
+                builder: (_) => TripEditScreen(trip: trip, initialStops: grup.stops),
               ),
             ),
           );
         }).toList(),
       ),
+    );
+  }
+}
+
+/// Filtre satırındaki dropdown'ları tarih aralığı butonuyla aynı görsel
+/// ağırlığa (kenarlıklı kutu) getirir - eskiden dropdown'lar kenarlıksız,
+/// tarih butonu kenarlıklıydı, satırda iki farklı bileşen dili görünüyordu.
+class _FiltreKutusu extends StatelessWidget {
+  const _FiltreKutusu({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        border: Border.all(color: Theme.of(context).colorScheme.outline),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: DropdownButtonHideUnderline(child: child),
     );
   }
 }
@@ -341,44 +382,51 @@ class _FilterBar extends ConsumerWidget {
             onPressed: () => _tarihSec(context, ref, filters),
           ),
           driversAsync.maybeWhen(
-            data: (drivers) => DropdownButton<String?>(
-              hint: const Text('Şoför'),
-              value: filters.driverId,
-              items: [
-                const DropdownMenuItem(value: null, child: Text('Tüm şoförler')),
-                ...drivers.map((d) => DropdownMenuItem(value: d.id, child: Text(d.fullName))),
-              ],
-              onChanged: (v) => ref.read(tripFiltersProvider.notifier).state =
-                  filters.copyWith(driverId: v, clearDriver: v == null),
+            data: (drivers) => _FiltreKutusu(
+              child: DropdownButton<String?>(
+                hint: const Text('Şoför'),
+                value: filters.driverId,
+                items: [
+                  const DropdownMenuItem(value: null, child: Text('Tüm şoförler')),
+                  ...drivers.map((d) => DropdownMenuItem(value: d.id, child: Text(d.fullName))),
+                ],
+                onChanged: (v) => ref.read(tripFiltersProvider.notifier).state =
+                    filters.copyWith(driverId: v, clearDriver: v == null),
+              ),
             ),
             orElse: () => const SizedBox.shrink(),
           ),
           vehiclesAsync.maybeWhen(
-            data: (vehicles) => DropdownButton<String?>(
-              hint: const Text('Plaka'),
-              value: filters.vehicleId,
-              items: [
-                const DropdownMenuItem(value: null, child: Text('Tüm plakalar')),
-                ...vehicles.map((v) => DropdownMenuItem(value: v.id, child: Text(v.plaka))),
-              ],
-              onChanged: (v) => ref.read(tripFiltersProvider.notifier).state =
-                  filters.copyWith(vehicleId: v, clearVehicle: v == null),
+            data: (vehicles) => _FiltreKutusu(
+              child: DropdownButton<String?>(
+                hint: const Text('Plaka'),
+                value: filters.vehicleId,
+                items: [
+                  const DropdownMenuItem(value: null, child: Text('Tüm plakalar')),
+                  ...vehicles.map((v) => DropdownMenuItem(value: v.id, child: Text(v.plaka))),
+                ],
+                onChanged: (v) => ref.read(tripFiltersProvider.notifier).state =
+                    filters.copyWith(vehicleId: v, clearVehicle: v == null),
+              ),
             ),
             orElse: () => const SizedBox.shrink(),
           ),
-          DropdownButton<OnayDurumu?>(
-            hint: const Text('Onay Durumu'),
-            value: filters.onayDurumu,
-            items: [
-              const DropdownMenuItem(value: null, child: Text('Tümü')),
-              ...OnayDurumu.values.map(
-                (d) => DropdownMenuItem(value: d, child: Text(_onayLabel(d))),
-              ),
-            ],
-            onChanged: (v) => ref.read(tripFiltersProvider.notifier).state =
-                filters.copyWith(onayDurumu: v, clearOnay: v == null),
+          _FiltreKutusu(
+            child: DropdownButton<OnayDurumu?>(
+              hint: const Text('Onay Durumu'),
+              value: filters.onayDurumu,
+              items: [
+                const DropdownMenuItem(value: null, child: Text('Tümü')),
+                ...OnayDurumu.values.map(
+                  (d) => DropdownMenuItem(value: d, child: Text(_onayLabel(d))),
+                ),
+              ],
+              onChanged: (v) => ref.read(tripFiltersProvider.notifier).state =
+                  filters.copyWith(onayDurumu: v, clearOnay: v == null),
+            ),
           ),
-          DropdownButton<SeferDurumu?>(
+          _FiltreKutusu(
+            child: DropdownButton<SeferDurumu?>(
             hint: const Text('Sefer Durumu'),
             value: filters.seferDurumu,
             items: [
@@ -389,6 +437,7 @@ class _FilterBar extends ConsumerWidget {
             ],
             onChanged: (v) => ref.read(tripFiltersProvider.notifier).state =
                 filters.copyWith(seferDurumu: v, clearSefer: v == null),
+            ),
           ),
           TextButton.icon(
             icon: const Icon(Icons.filter_alt_off_outlined),

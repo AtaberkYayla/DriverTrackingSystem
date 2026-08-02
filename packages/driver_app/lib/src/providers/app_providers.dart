@@ -1,10 +1,15 @@
+import 'dart:io';
+
 import 'package:core/core.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 import '../local/app_database.dart';
 import '../local/local_store.dart';
 import '../location/location_service.dart';
 import '../sync/sync_service.dart';
+import '../update/update_info.dart';
+import '../update/update_service.dart';
 
 final appDatabaseProvider = Provider<AppDatabase>((ref) {
   final db = AppDatabase();
@@ -102,4 +107,26 @@ final requestersProvider = FutureProvider<List<RequestersCacheData>>((ref) async
 final companiesProvider = FutureProvider<List<CompaniesCacheData>>((ref) async {
   await ref.watch(masterDataRefreshProvider.future);
   return ref.watch(localStoreProvider).sirketler();
+});
+
+/// `env/api.json`'daki `APK_VERSION_URL` - main.dart'ta gercek degerle
+/// override edilir (bkz. initApiClient'in yanindaki env okuma).
+final apkVersionUrlProvider = Provider<String>((ref) => '');
+
+final updateServiceProvider = Provider<UpdateService>((ref) => const UpdateService());
+
+/// Uygulama acilisinda bir kez calisip daha yeni bir surum olup olmadigini
+/// kontrol eder (bkz. update_service.dart) - sadece Android'de anlamli
+/// (APK sideload akisi), baglanti/kontrol hatasinda hicbir zaman uygulamayi
+/// kilitlemeden null doner.
+final updateCheckProvider = FutureProvider<UpdateInfo?>((ref) async {
+  if (!Platform.isAndroid) return null;
+  final versionUrl = ref.watch(apkVersionUrlProvider);
+  if (versionUrl.isEmpty) return null;
+  final packageInfo = await PackageInfo.fromPlatform();
+  final currentVersionCode = int.tryParse(packageInfo.buildNumber) ?? 0;
+  return ref.watch(updateServiceProvider).checkForUpdate(
+        versionUrl: versionUrl,
+        currentVersionCode: currentVersionCode,
+      );
 });

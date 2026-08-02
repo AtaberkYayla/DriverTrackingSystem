@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../providers/app_providers.dart';
+import '../../widgets/tarih_saat_secici.dart';
 
 const _uuid = Uuid();
 
@@ -229,33 +230,34 @@ class _CreateTripScreenState extends ConsumerState<CreateTripScreen> {
             ),
           ),
           const SizedBox(height: 16),
-          _tarihSaatSecici(
+          TarihSaatSecici(
             label: 'Fabrika Çıkış',
             deger: _fabrikaCikisAt,
             onChanged: (v) => setState(() => _fabrikaCikisAt = v),
           ),
           const SizedBox(height: 16),
-          _tarihSaatSecici(
+          TarihSaatSecici(
             label: 'Fabrika Giriş (sefer kapanışı)',
             deger: _fabrikaGirisAt,
             onChanged: (v) => setState(() => _fabrikaGirisAt = v),
           ),
           const Divider(height: 40),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('Firma Ziyaretleri (Duraklar)', style: Theme.of(context).textTheme.titleMedium),
+          Text('Firma Ziyaretleri (Duraklar)', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 12),
+          // "Durak Ekle" butonu bilinçli olarak 1. durağın hemen altında:
+          // yeni bir durak eklerken önce mevcut ilk durağı görmek daha
+          // az yanlış tıklamaya yol açıyor.
+          for (var i = 0; i < _duraklar.length; i++) ...[
+            _durakKarti(i, _duraklar[i]),
+            const SizedBox(height: 12),
+            if (i == 0) ...[
               OutlinedButton.icon(
                 icon: const Icon(Icons.add),
                 label: const Text('Durak Ekle'),
                 onPressed: () => setState(() => _duraklar.add(_StopForm())),
               ),
+              const SizedBox(height: 12),
             ],
-          ),
-          const SizedBox(height: 12),
-          for (var i = 0; i < _duraklar.length; i++) ...[
-            _durakKarti(i, _duraklar[i]),
-            const SizedBox(height: 12),
           ],
           if (_hata != null)
             Padding(
@@ -302,13 +304,13 @@ class _CreateTripScreenState extends ConsumerState<CreateTripScreen> {
               ],
             ),
             const SizedBox(height: 8),
-            _tarihSaatSecici(
+            TarihSaatSecici(
               label: 'Firma Giriş *',
               deger: durak.firmaGirisAt,
               onChanged: (v) => setState(() => durak.firmaGirisAt = v),
             ),
             const SizedBox(height: 16),
-            _tarihSaatSecici(
+            TarihSaatSecici(
               label: 'Firma Çıkış',
               deger: durak.firmaCikisAt,
               onChanged: (v) => setState(() => durak.firmaCikisAt = v),
@@ -469,39 +471,4 @@ class _CreateTripScreenState extends ConsumerState<CreateTripScreen> {
     );
   }
 
-  /// Formun en ustundeki "Tarih" alanindan (GG.AA.YYYY) sefer tarihini
-  /// ayristirir; gecersizse bugune duser. Asagidaki saat secicileri artik
-  /// tarihi tekrar sormuyor, bu tarihi temel alip sadece saat soruyor.
-  DateTime get _seferTarihi => _gunAyYiliAyristir(_tarihController.text) ?? bugununTarihi();
-
-  Widget _tarihSaatSecici({
-    required String label,
-    required DateTime? deger,
-    required void Function(DateTime?) onChanged,
-  }) {
-    final dateFormat = DateFormat('dd.MM.yyyy HH:mm');
-    return Row(
-      children: [
-        Expanded(
-          child: Text('$label: ${deger == null ? '-' : dateFormat.format(deger)}'),
-        ),
-        TextButton(
-          onPressed: () async {
-            final baseDate = _seferTarihi;
-            final saat = await showTimePicker(
-              context: context,
-              initialTime: TimeOfDay.fromDateTime(deger ?? DateTime.now()),
-              initialEntryMode: TimePickerEntryMode.input,
-              helpText: '$label saati (${DateFormat('dd.MM.yyyy').format(baseDate)})',
-            );
-            if (saat == null) return;
-            onChanged(DateTime(baseDate.year, baseDate.month, baseDate.day, saat.hour, saat.minute));
-          },
-          child: const Text('Seç'),
-        ),
-        if (deger != null)
-          TextButton(onPressed: () => onChanged(null), child: const Text('Temizle')),
-      ],
-    );
-  }
 }

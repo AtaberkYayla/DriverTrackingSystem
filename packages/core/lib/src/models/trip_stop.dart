@@ -129,6 +129,7 @@ class TripStop {
   }
 
   TripStop copyWith({
+    String? tripId,
     int? sira,
     DateTime? firmaGirisAt,
     String? tripTypeId,
@@ -151,7 +152,7 @@ class TripStop {
     return TripStop(
       id: id,
       clientStopId: clientStopId,
-      tripId: tripId,
+      tripId: tripId ?? this.tripId,
       sira: sira ?? this.sira,
       firmaGirisAt: firmaGirisAt ?? this.firmaGirisAt,
       tripTypeId: tripTypeId ?? this.tripTypeId,

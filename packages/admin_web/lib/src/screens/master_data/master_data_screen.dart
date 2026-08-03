@@ -141,6 +141,7 @@ class _VehiclesTab extends ConsumerWidget {
               controller: plakaController,
               decoration: const InputDecoration(labelText: 'Plaka'),
             ),
+            const SizedBox(height: 16),
             TextField(
               controller: aciklamaController,
               decoration: const InputDecoration(labelText: 'Açıklama'),
@@ -242,6 +243,7 @@ class _TripTypesTab extends ConsumerWidget {
                 controller: labelController,
                 decoration: const InputDecoration(labelText: 'Ad (ör. Satın Alma Sevkiyatı)'),
               ),
+              const SizedBox(height: 16),
               TextField(
                 controller: codeController,
                 decoration: const InputDecoration(labelText: 'Kod (ör. SATIN_ALMA_SEVKIYATI)'),
@@ -488,6 +490,7 @@ class _CompaniesTab extends ConsumerWidget {
                   controller: nameController,
                   decoration: const InputDecoration(labelText: 'Şirket Adı'),
                 ),
+                const SizedBox(height: 16),
                 TextField(
                   controller: sehirController,
                   decoration: const InputDecoration(labelText: 'Şehir'),

@@ -5,22 +5,10 @@ import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../providers/app_providers.dart';
+import '../../widgets/durak_form_alanlari.dart';
 import '../../widgets/tarih_saat_secici.dart';
 
 const _uuid = Uuid();
-
-/// Gidilebilecek lokasyonlar bu sekiz il ile sinirlidir (bkz. driver_app'teki
-/// ayni isimli/amacli liste ve create_trip_screen.dart).
-const _izinVerilenIller = <String>[
-  'İzmir',
-  'Manisa',
-  'İstanbul',
-  'Bursa',
-  'Konya',
-  'Aydın',
-  'Aksaray',
-  'Tekirdağ',
-];
 
 final _gunAyYilFormat = DateFormat('dd.MM.yyyy');
 final _dateFormat = DateFormat('dd.MM.yyyy HH:mm');
@@ -58,7 +46,6 @@ class _StopEditForm {
     cikisNedeniController.text = stop.cikisNedeni ?? '';
     gidilenIlController.text = stop.gidilenIl ?? '';
     gidilenIlceController.text = stop.gidilenIlce ?? '';
-    seciliIl = _izinVerilenIller.contains(stop.gidilenIl) ? stop.gidilenIl : null;
     sirketId = stop.gidilenSirketId;
     sirketFreeController.text = stop.gidilenSirketFree ?? '';
     irsaliyeNoGirisController.text = stop.irsaliyeNoGiris ?? '';
@@ -79,7 +66,6 @@ class _StopEditForm {
   final cikisNedeniController = TextEditingController();
   final gidilenIlController = TextEditingController();
   final gidilenIlceController = TextEditingController();
-  String? seciliIl;
   String? sirketId;
   final sirketFreeController = TextEditingController();
   final irsaliyeNoGirisController = TextEditingController();
@@ -381,6 +367,7 @@ class _TripEditScreenState extends ConsumerState<TripEditScreen> {
           vehiclesAsync.maybeWhen(
             data: (vehicles) => DropdownButtonFormField<String>(
               initialValue: _seciliVehicleId,
+              isExpanded: true,
               decoration: const InputDecoration(labelText: 'Araç Plakası', border: OutlineInputBorder()),
               items: vehicles.map((v) => DropdownMenuItem(value: v.id, child: Text(v.plaka))).toList(),
               onChanged: (v) => setState(() => _seciliVehicleId = v ?? _seciliVehicleId),
@@ -505,12 +492,19 @@ class _TripEditScreenState extends ConsumerState<TripEditScreen> {
             tripTypesAsync.maybeWhen(
               data: (tripTypes) => DropdownButtonFormField<String?>(
                 initialValue: durak.tripTypeId,
+                isExpanded: true,
                 decoration: const InputDecoration(labelText: 'Seyahat Türü', border: OutlineInputBorder()),
                 items: [
                   const DropdownMenuItem(value: null, child: Text('-')),
                   ...tripTypes.map((t) => DropdownMenuItem(value: t.id, child: Text(t.label))),
                 ],
-                onChanged: (v) => setState(() => durak.tripTypeId = v),
+                onChanged: (v) => setState(() {
+                  durak.tripTypeId = v;
+                  final uyumlular = turUyumluSirketler(companiesAsync.value ?? const [], v);
+                  if (durak.sirketId != null && !uyumlular.any((c) => c.id == durak.sirketId)) {
+                    durak.sirketId = null;
+                  }
+                }),
               ),
               orElse: () => const SizedBox.shrink(),
             ),
@@ -518,6 +512,7 @@ class _TripEditScreenState extends ConsumerState<TripEditScreen> {
             requestersAsync.maybeWhen(
               data: (requesters) => DropdownButtonFormField<String?>(
                 initialValue: durak.requesterId,
+                isExpanded: true,
                 decoration:
                     const InputDecoration(labelText: 'Talep Eden Kişi', border: OutlineInputBorder()),
                 items: [
@@ -537,18 +532,24 @@ class _TripEditScreenState extends ConsumerState<TripEditScreen> {
             ),
             const SizedBox(height: 16),
             turkeyAsync.maybeWhen(
-              data: (turkey) => _ilIlceAlanlari(durak, turkey),
+              data: (turkey) => IlIlceSecici(
+                turkey: turkey,
+                ilController: durak.gidilenIlController,
+                ilceController: durak.gidilenIlceController,
+              ),
               orElse: () => const LinearProgressIndicator(),
             ),
             const SizedBox(height: 16),
             companiesAsync.maybeWhen(
               data: (companies) => DropdownButtonFormField<String?>(
                 initialValue: durak.sirketId,
+                isExpanded: true,
                 decoration:
                     const InputDecoration(labelText: 'Gidilen Şirket', border: OutlineInputBorder()),
                 items: [
                   const DropdownMenuItem(value: null, child: Text('Listede yok / serbest metin')),
-                  ...companies.map((c) => DropdownMenuItem(value: c.id, child: Text(c.name))),
+                  ...turUyumluSirketler(companies, durak.tripTypeId)
+                      .map((c) => DropdownMenuItem(value: c.id, child: Text(c.name))),
                 ],
                 onChanged: (v) => setState(() => durak.sirketId = v),
               ),
@@ -595,6 +596,7 @@ class _TripEditScreenState extends ConsumerState<TripEditScreen> {
               const SizedBox(height: 12),
               DropdownButtonFormField<OnayDurumu>(
                 initialValue: durak.onayDurumu,
+                isExpanded: true,
                 decoration:
                     const InputDecoration(labelText: 'Onay Durumu', border: OutlineInputBorder()),
                 items: OnayDurumu.values
@@ -608,6 +610,7 @@ class _TripEditScreenState extends ConsumerState<TripEditScreen> {
               const SizedBox(height: 16),
               DropdownButtonFormField<SeferDurumu>(
                 initialValue: durak.seferDurumu,
+                isExpanded: true,
                 decoration:
                     const InputDecoration(labelText: 'Sefer Durumu', border: OutlineInputBorder()),
                 items: const [
@@ -621,71 +624,6 @@ class _TripEditScreenState extends ConsumerState<TripEditScreen> {
           ],
         ),
       ),
-    );
-  }
-
-  /// Gidilen il/ilce alanlari: il, sabit _izinVerilenIller listesinden
-  /// secilir (serbest metne izin verilmez); Izmir/Manisa icin ilce de
-  /// il_ilce.json'daki listeden secilir, digerlerinde ilce serbest metindir.
-  Widget _ilIlceAlanlari(_StopEditForm durak, TurkeyLocations turkey) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Autocomplete<String>(
-          optionsBuilder: (value) {
-            if (value.text.isEmpty) return _izinVerilenIller;
-            final q = value.text.toLowerCase();
-            return _izinVerilenIller.where((il) => il.toLowerCase().contains(q));
-          },
-          onSelected: (il) => setState(() {
-            durak.seciliIl = il;
-            durak.gidilenIlController.text = il;
-            durak.gidilenIlceController.clear();
-          }),
-          fieldViewBuilder: (context, controller, focusNode, onSubmit) {
-            controller.text = durak.gidilenIlController.text;
-            return TextFormField(
-              controller: controller,
-              focusNode: focusNode,
-              decoration: const InputDecoration(labelText: 'Gidilen İl', border: OutlineInputBorder()),
-              onChanged: (v) {
-                durak.gidilenIlController.text = v;
-                if (durak.seciliIl != v) {
-                  setState(() {
-                    durak.seciliIl = null;
-                    durak.gidilenIlceController.clear();
-                  });
-                }
-              },
-            );
-          },
-        ),
-        if (durak.seciliIl != null) ...[
-          const SizedBox(height: 16),
-          if (turkey.ilceZorunluMu(durak.seciliIl!))
-            Autocomplete<String>(
-              key: ValueKey('ilce-${durak.seciliIl}'),
-              optionsBuilder: (value) => turkey.ilceAra(durak.seciliIl!, value.text),
-              onSelected: (ilce) => durak.gidilenIlceController.text = ilce,
-              fieldViewBuilder: (context, controller, focusNode, onSubmit) {
-                controller.text = durak.gidilenIlceController.text;
-                return TextFormField(
-                  controller: controller,
-                  focusNode: focusNode,
-                  decoration:
-                      const InputDecoration(labelText: 'Gidilen İlçe', border: OutlineInputBorder()),
-                  onChanged: (v) => durak.gidilenIlceController.text = v,
-                );
-              },
-            )
-          else
-            TextFormField(
-              controller: durak.gidilenIlceController,
-              decoration: const InputDecoration(
-                  labelText: 'Gidilen İlçe (opsiyonel)', border: OutlineInputBorder()),
-            ),
-        ],
-      ],
     );
   }
 

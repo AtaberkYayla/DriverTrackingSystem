@@ -19,8 +19,20 @@ if ($stopRow === false) {
 }
 requireTripOwnershipIfOperator($pdo, $user, $stopRow['trip_id']);
 
+// Duragi baska bir sefere tasima (bkz. admin_web "Fabrika Giris/Cikis (Sefer
+// Bol)" araci): hedef sefer var mi ve operator ise ona da sahip mi kontrol
+// edilir, aksi halde operator baskasinin seferine durak tasiyabilirdi.
+if (array_key_exists('trip_id', $body) && $body['trip_id'] !== $stopRow['trip_id']) {
+    $targetTripStmt = $pdo->prepare('SELECT id FROM trips WHERE id = ?');
+    $targetTripStmt->execute([$body['trip_id']]);
+    if ($targetTripStmt->fetch() === false) {
+        json_error('not_found', 'Hedef sefer bulunamadı', 404);
+    }
+    requireTripOwnershipIfOperator($pdo, $user, $body['trip_id']);
+}
+
 $editable = [
-    'sira', 'firma_giris_at', 'trip_type_id', 'requester_id', 'cikis_nedeni', 'gidilen_il',
+    'trip_id', 'sira', 'firma_giris_at', 'trip_type_id', 'requester_id', 'cikis_nedeni', 'gidilen_il',
     'gidilen_ilce', 'gidilen_sirket_id', 'gidilen_sirket_free', 'irsaliye_no_giris', 'irsaliye_no_cikis',
     'firma_cikis_at', 'notlar', 'notlar_cikis',
 ];

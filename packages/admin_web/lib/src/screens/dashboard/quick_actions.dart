@@ -5,16 +5,17 @@ import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../providers/app_providers.dart';
+import '../../widgets/durak_form_alanlari.dart';
 import '../../widgets/tarih_saat_secici.dart';
 
 const _uuid = Uuid();
 final _dateFormat = DateFormat('dd.MM.yyyy HH:mm');
 
 /// Bir şoförün tüm seferlerini (tarih filtresi olmadan) çekip sefer id'sine
-/// göre tekilleştirir; `trips_list.php` her durak için ayrı bir satır
-/// döndürdüğünden (bkz. TripRepository.fetchAllStopsWithTrip) aynı sefer
-/// birden fazla kez gelebilir.
-Future<({Map<String, Trip> tripler, Map<String, int> durakSayilari})> _soforunSeferleri(
+/// göre tekilleştirir ve her seferin duraklarını toplar; `trips_list.php`
+/// her durak için ayrı bir satır döndürdüğünden (bkz.
+/// TripRepository.fetchAllStopsWithTrip) aynı sefer birden fazla kez gelebilir.
+Future<({Map<String, Trip> tripler, Map<String, List<TripStop>> stopsByTrip})> _soforunSeferleri(
   WidgetRef ref,
   String driverId,
 ) async {
@@ -22,14 +23,17 @@ Future<({Map<String, Trip> tripler, Map<String, int> durakSayilari})> _soforunSe
       .read(tripRepositoryProvider)
       .fetchAllStopsWithTrip(driverId: driverId, limit: 500);
   final tripler = <String, Trip>{};
-  final durakSayilari = <String, int>{};
+  final stopsByTrip = <String, List<TripStop>>{};
   for (final row in rows) {
     tripler[row.trip.id] = row.trip;
     if (row.stop != null) {
-      durakSayilari[row.trip.id] = (durakSayilari[row.trip.id] ?? 0) + 1;
+      (stopsByTrip[row.trip.id] ??= []).add(row.stop!);
     }
   }
-  return (tripler: tripler, durakSayilari: durakSayilari);
+  for (final stops in stopsByTrip.values) {
+    stops.sort((a, b) => a.sira.compareTo(b.sira));
+  }
+  return (tripler: tripler, stopsByTrip: stopsByTrip);
 }
 
 /// Verilen zaman anında açık olan (fabrika çıkışı yapılmış, henüz fabrika
@@ -47,9 +51,10 @@ Trip? _oAndaAcikSeferiBul(Map<String, Trip> tripler, DateTime zaman) {
   return bulunan;
 }
 
-/// Şoförün şu an açık (henüz fabrika girişi yapılmamış) en güncel seferi.
-Trip? _acikSeferiBul(Map<String, Trip> tripler) {
-  final acikSeferler = tripler.values.where((t) => t.aktifMi).toList()
+/// Seferleri fabrika çıkış zamanına göre en yeniden en eskiye sıralar (çıkışı
+/// olmayanlar sona atılır).
+List<Trip> _tarihSirali(Iterable<Trip> trips) {
+  final liste = trips.toList()
     ..sort((a, b) {
       final ac = a.fabrikaCikisAt;
       final bc = b.fabrikaCikisAt;
@@ -58,7 +63,20 @@ Trip? _acikSeferiBul(Map<String, Trip> tripler) {
       if (bc == null) return -1;
       return bc.compareTo(ac);
     });
-  return acikSeferler.isEmpty ? null : acikSeferler.first;
+  return liste;
+}
+
+/// Şoförün şu an açık (henüz fabrika girişi yapılmamış) en güncel seferi.
+Trip? _acikSeferiBul(Map<String, Trip> tripler) {
+  final liste = _tarihSirali(tripler.values.where((t) => t.aktifMi));
+  return liste.isEmpty ? null : liste.first;
+}
+
+/// Şoförün (açık ya da kapalı fark etmeksizin) en güncel seferi - bölünecek
+/// sefer için açık sefer bulunamadığında varsayılan seçim olarak kullanılır.
+Trip? _enSonSeferiBul(Map<String, Trip> tripler) {
+  final liste = _tarihSirali(tripler.values);
+  return liste.isEmpty ? null : liste.first;
 }
 
 Future<void> showDurakEkleDialog(BuildContext context, WidgetRef ref) {
@@ -126,7 +144,7 @@ class _DurakEkleDialogState extends ConsumerState<_DurakEkleDialog> {
         id: '',
         clientStopId: _uuid.v4(),
         tripId: sefer.id,
-        sira: sonuc.durakSayilari[sefer.id] ?? 0,
+        sira: sonuc.stopsByTrip[sefer.id]?.length ?? 0,
         firmaGirisAt: _firmaGirisAt!,
         tripTypeId: _tripTypeId,
         requesterId: _requesterId,
@@ -164,6 +182,7 @@ class _DurakEkleDialogState extends ConsumerState<_DurakEkleDialog> {
     final tripTypesAsync = ref.watch(tripTypesProvider);
     final requestersAsync = ref.watch(requestersProvider);
     final companiesAsync = ref.watch(companiesProvider);
+    final turkeyAsync = ref.watch(turkeyLocationsProvider);
 
     return AlertDialog(
       title: const Text('Durak Ekle (Hızlı)'),
@@ -182,6 +201,7 @@ class _DurakEkleDialogState extends ConsumerState<_DurakEkleDialog> {
               driversAsync.maybeWhen(
                 data: (drivers) => DropdownButtonFormField<String>(
                   initialValue: _seciliDriverId,
+                  isExpanded: true,
                   decoration: const InputDecoration(labelText: 'Şoför', border: OutlineInputBorder()),
                   items:
                       drivers.map((d) => DropdownMenuItem(value: d.id, child: Text(d.fullName))).toList(),
@@ -205,13 +225,20 @@ class _DurakEkleDialogState extends ConsumerState<_DurakEkleDialog> {
               tripTypesAsync.maybeWhen(
                 data: (tripTypes) => DropdownButtonFormField<String?>(
                   initialValue: _tripTypeId,
+                  isExpanded: true,
                   decoration:
                       const InputDecoration(labelText: 'Seyahat Türü', border: OutlineInputBorder()),
                   items: [
                     const DropdownMenuItem(value: null, child: Text('-')),
                     ...tripTypes.map((t) => DropdownMenuItem(value: t.id, child: Text(t.label))),
                   ],
-                  onChanged: (v) => setState(() => _tripTypeId = v),
+                  onChanged: (v) => setState(() {
+                    _tripTypeId = v;
+                    final uyumlular = turUyumluSirketler(companiesAsync.value ?? const [], v);
+                    if (_sirketId != null && !uyumlular.any((c) => c.id == _sirketId)) {
+                      _sirketId = null;
+                    }
+                  }),
                 ),
                 orElse: () => const SizedBox.shrink(),
               ),
@@ -219,6 +246,7 @@ class _DurakEkleDialogState extends ConsumerState<_DurakEkleDialog> {
               requestersAsync.maybeWhen(
                 data: (requesters) => DropdownButtonFormField<String?>(
                   initialValue: _requesterId,
+                  isExpanded: true,
                   decoration:
                       const InputDecoration(labelText: 'Talep Eden Kişi', border: OutlineInputBorder()),
                   items: [
@@ -236,24 +264,25 @@ class _DurakEkleDialogState extends ConsumerState<_DurakEkleDialog> {
                     const InputDecoration(labelText: 'Çıkış Nedeni / Görev', border: OutlineInputBorder()),
               ),
               const SizedBox(height: 16),
-              TextFormField(
-                controller: _gidilenIlController,
-                decoration: const InputDecoration(labelText: 'Gidilen İl', border: OutlineInputBorder()),
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _gidilenIlceController,
-                decoration: const InputDecoration(labelText: 'Gidilen İlçe', border: OutlineInputBorder()),
+              turkeyAsync.maybeWhen(
+                data: (turkey) => IlIlceSecici(
+                  turkey: turkey,
+                  ilController: _gidilenIlController,
+                  ilceController: _gidilenIlceController,
+                ),
+                orElse: () => const LinearProgressIndicator(),
               ),
               const SizedBox(height: 16),
               companiesAsync.maybeWhen(
                 data: (companies) => DropdownButtonFormField<String?>(
                   initialValue: _sirketId,
+                  isExpanded: true,
                   decoration:
                       const InputDecoration(labelText: 'Gidilen Şirket', border: OutlineInputBorder()),
                   items: [
                     const DropdownMenuItem(value: null, child: Text('Listede yok / serbest metin')),
-                    ...companies.map((c) => DropdownMenuItem(value: c.id, child: Text(c.name))),
+                    ...turUyumluSirketler(companies, _tripTypeId)
+                        .map((c) => DropdownMenuItem(value: c.id, child: Text(c.name))),
                   ],
                   onChanged: (v) => setState(() => _sirketId = v),
                 ),
@@ -300,11 +329,13 @@ class _DurakEkleDialogState extends ConsumerState<_DurakEkleDialog> {
   }
 }
 
-/// "Fabrika Giriş/Çıkış" bölme aracı: fabrika giriş/çıkışı unutulup
-/// ertesi gün mobilde direkt yeni bir fabrika çıkışıyla devam edilen
-/// durumu düzeltir. Şoförün açık seferini girilen "Fabrika Giriş" zamanıyla
-/// kapatır, aynı şoför/araçla girilen "Fabrika Çıkış" zamanıyla yeni bir
-/// sefer açar (bkz. plan md §6).
+/// "Fabrika Giriş/Çıkış" bölme aracı: fabrika giriş/çıkışı unutulup ertesi
+/// gün mobilde direkt yeni bir fabrika çıkışıyla devam edilen durumu (ya da
+/// zaten kapanmış ama yanlış saatle kapanmış bir seferi) düzeltir. Şoförün
+/// seçtiğiniz (açık ya da kapalı) seferini girilen "Fabrika Giriş" zamanıyla
+/// kapatır/düzeltir; o seferin duraklarından hangileri işaretlenirse onları
+/// yeni sefere taşır; ardından aynı şoför/araçla girilen "Fabrika Çıkış"
+/// zamanıyla yeni bir sefer açar (bkz. plan md §6).
 class _FabrikaBolmeDialog extends ConsumerStatefulWidget {
   const _FabrikaBolmeDialog();
 
@@ -314,50 +345,67 @@ class _FabrikaBolmeDialog extends ConsumerStatefulWidget {
 
 class _FabrikaBolmeDialogState extends ConsumerState<_FabrikaBolmeDialog> {
   String? _seciliDriverId;
+  String? _seciliTripId;
   String? _seciliVehicleId;
   DateTime? _fabrikaGirisAt;
   DateTime? _fabrikaCikisAt;
-  bool _seferAraniyor = false;
-  Trip? _eskiSefer;
+  bool _seferlerYukleniyor = false;
+  Map<String, Trip> _tripler = const {};
+  Map<String, List<TripStop>> _stopsByTrip = const {};
+  final Set<String> _tasinacakStopIdleri = {};
   bool _kaydediliyor = false;
   String? _hata;
+
+  Trip? get _seciliTrip => _tripler[_seciliTripId];
+  List<TripStop> get _seciliTripDuraklari => _stopsByTrip[_seciliTripId] ?? const [];
 
   Future<void> _soforSecildi(String? driverId) async {
     setState(() {
       _seciliDriverId = driverId;
-      _eskiSefer = null;
-      _hata = null;
+      _seciliTripId = null;
       _seciliVehicleId = null;
+      _tripler = const {};
+      _stopsByTrip = const {};
+      _tasinacakStopIdleri.clear();
+      _hata = null;
     });
     if (driverId == null) return;
-    setState(() => _seferAraniyor = true);
+    setState(() => _seferlerYukleniyor = true);
     try {
       final sonuc = await _soforunSeferleri(ref, driverId);
-      final eskiSefer = _acikSeferiBul(sonuc.tripler);
       if (!mounted) return;
+      final varsayilanSefer = _acikSeferiBul(sonuc.tripler) ?? _enSonSeferiBul(sonuc.tripler);
       setState(() {
-        _eskiSefer = eskiSefer;
-        _seciliVehicleId = eskiSefer?.vehicleId;
-        if (eskiSefer == null) _hata = 'Bu şoför için açık bir sefer bulunamadı.';
+        _tripler = sonuc.tripler;
+        _stopsByTrip = sonuc.stopsByTrip;
+        _seciliTripId = varsayilanSefer?.id;
+        _seciliVehicleId = varsayilanSefer?.vehicleId;
       });
     } finally {
-      if (mounted) setState(() => _seferAraniyor = false);
+      if (mounted) setState(() => _seferlerYukleniyor = false);
     }
+  }
+
+  void _tripSecildi(String? tripId) {
+    setState(() {
+      _seciliTripId = tripId;
+      _seciliVehicleId = _tripler[tripId]?.vehicleId;
+      _tasinacakStopIdleri.clear();
+    });
   }
 
   Future<void> _kaydet() async {
     setState(() => _hata = null);
-    final eskiSefer = _eskiSefer;
-    if (eskiSefer == null) {
-      setState(() => _hata = 'Önce açık bir sefer bulunmalı.');
-      return;
-    }
-    if (_fabrikaGirisAt == null || _fabrikaCikisAt == null || _seciliVehicleId == null) {
-      setState(() => _hata = 'Fabrika Giriş, Fabrika Çıkış ve araç zorunlu.');
+    final eskiSefer = _seciliTrip;
+    if (eskiSefer == null ||
+        _fabrikaGirisAt == null ||
+        _fabrikaCikisAt == null ||
+        _seciliVehicleId == null) {
+      setState(() => _hata = 'Bölünecek sefer, Fabrika Giriş, Fabrika Çıkış ve araç zorunlu.');
       return;
     }
     if (eskiSefer.fabrikaCikisAt != null && _fabrikaGirisAt!.isBefore(eskiSefer.fabrikaCikisAt!)) {
-      setState(() => _hata = 'Fabrika Giriş zamanı, eski seferin Fabrika Çıkış zamanından önce olamaz.');
+      setState(() => _hata = 'Fabrika Giriş zamanı, seçili seferin Fabrika Çıkış zamanından önce olamaz.');
       return;
     }
     if (_fabrikaCikisAt!.isBefore(_fabrikaGirisAt!)) {
@@ -377,7 +425,7 @@ class _FabrikaBolmeDialogState extends ConsumerState<_FabrikaBolmeDialog> {
         fabrikaCikisAt: eskiSefer.fabrikaCikisAt,
         fabrikaGirisAt: _fabrikaGirisAt,
       ));
-      await repo.upsertTrip(Trip(
+      final yeniSefer = await repo.upsertTrip(Trip(
         id: '',
         clientTripId: _uuid.v4(),
         driverId: eskiSefer.driverId,
@@ -386,11 +434,22 @@ class _FabrikaBolmeDialogState extends ConsumerState<_FabrikaBolmeDialog> {
         fabrikaCikisAt: _fabrikaCikisAt,
         fabrikaGirisAt: null,
       ));
+
+      final tasinacaklar =
+          _seciliTripDuraklari.where((s) => _tasinacakStopIdleri.contains(s.id)).toList();
+      for (var i = 0; i < tasinacaklar.length; i++) {
+        await repo.updateTripStopDetails(tasinacaklar[i].copyWith(tripId: yeniSefer.id, sira: i));
+      }
+
       ref.invalidate(tripListProvider);
       if (mounted) {
         Navigator.of(context).pop();
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Sefer bölündü: eski sefer kapatıldı, yeni sefer açıldı.')),
+          SnackBar(
+            content: Text(tasinacaklar.isEmpty
+                ? 'Sefer bölündü.'
+                : 'Sefer bölündü, ${tasinacaklar.length} durak yeni sefere taşındı.'),
+          ),
         );
       }
     } catch (e) {
@@ -400,30 +459,49 @@ class _FabrikaBolmeDialogState extends ConsumerState<_FabrikaBolmeDialog> {
     }
   }
 
+  String _seferEtiketi(Trip trip) {
+    final cikis = trip.fabrikaCikisAt != null ? _dateFormat.format(trip.fabrikaCikisAt!) : '-';
+    final giris = trip.fabrikaGirisAt != null ? _dateFormat.format(trip.fabrikaGirisAt!) : 'Açık';
+    final durakSayisi = _stopsByTrip[trip.id]?.length ?? 0;
+    return '${trip.tarih} · $cikis → $giris · $durakSayisi durak';
+  }
+
+  String _durakEtiketi(TripStop stop, ReferenceData refData) {
+    final sirket = stop.gidilenSirketId != null
+        ? refData.sirketAdi(stop.gidilenSirketId)
+        : ((stop.gidilenSirketFree ?? '').isNotEmpty ? stop.gidilenSirketFree! : null);
+    return sirket ?? (stop.cikisNedeni?.isNotEmpty == true ? stop.cikisNedeni! : 'Durak');
+  }
+
   @override
   Widget build(BuildContext context) {
     final driversAsync = ref.watch(allDriversProvider);
     final vehiclesAsync = ref.watch(vehiclesProvider);
+    final refDataAsync = ref.watch(referenceDataProvider);
+    final seciliTrip = _seciliTrip;
+    final seciliTripDuraklari = _seciliTripDuraklari;
 
     return AlertDialog(
       title: const Text('Fabrika Giriş/Çıkış (Sefer Böl)'),
       content: SizedBox(
-        width: 420,
+        width: 460,
         child: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
               const Text(
-                'Fabrika giriş/çıkışı unutulmuş bir seferi ikiye böler: şoförün açık '
-                'seferini "Fabrika Giriş" ile kapatır, aynı şoför/araçla "Fabrika Çıkış" '
-                'ile yeni bir sefer açar.',
+                'Bir seferi (açık ya da zaten kapanmış olsun) girdiğiniz "Fabrika '
+                'Giriş" zamanıyla kapatır/düzeltir, aynı şoför/araçla "Fabrika Çıkış" '
+                'ile yeni bir sefer açar. O sefere ait duraklardan hangileri '
+                'işaretlenirse yeni sefere taşınır.',
                 style: TextStyle(fontSize: 12, color: Colors.grey),
               ),
               const SizedBox(height: 12),
               driversAsync.maybeWhen(
                 data: (drivers) => DropdownButtonFormField<String>(
                   initialValue: _seciliDriverId,
+                  isExpanded: true,
                   decoration: const InputDecoration(labelText: 'Şoför', border: OutlineInputBorder()),
                   items:
                       drivers.map((d) => DropdownMenuItem(value: d.id, child: Text(d.fullName))).toList(),
@@ -431,21 +509,68 @@ class _FabrikaBolmeDialogState extends ConsumerState<_FabrikaBolmeDialog> {
                 ),
                 orElse: () => const LinearProgressIndicator(),
               ),
-              if (_seferAraniyor) ...[
+              if (_seferlerYukleniyor) ...[
                 const SizedBox(height: 12),
                 const LinearProgressIndicator(),
               ],
-              if (!_seferAraniyor && _eskiSefer != null) ...[
-                const SizedBox(height: 12),
+              if (!_seferlerYukleniyor && _seciliDriverId != null) ...[
+                const SizedBox(height: 16),
+                if (_tripler.isEmpty)
+                  const Text(
+                    'Bu şoför için hiç sefer bulunamadı.',
+                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                  )
+                else
+                  DropdownButtonFormField<String>(
+                    initialValue: _seciliTripId,
+                    isExpanded: true,
+                    decoration:
+                        const InputDecoration(labelText: 'Bölünecek Sefer', border: OutlineInputBorder()),
+                    items: _tarihSirali(_tripler.values)
+                        .map((t) => DropdownMenuItem(value: t.id, child: Text(_seferEtiketi(t))))
+                        .toList(),
+                    onChanged: _tripSecildi,
+                  ),
+              ],
+              if (seciliTrip != null) ...[
+                const SizedBox(height: 8),
                 Text(
-                  'Açık sefer bulundu: ${_eskiSefer!.tarih}'
-                  '${_eskiSefer!.fabrikaCikisAt != null ? ' (Çıkış: ${_dateFormat.format(_eskiSefer!.fabrikaCikisAt!)})' : ''}',
+                  seciliTrip.aktifMi
+                      ? 'Bu sefer şu an açık.'
+                      : 'Bu sefer zaten kapalı; Fabrika Giriş zamanı değiştirilecek.',
                   style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
                 ),
+                if (seciliTripDuraklari.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  const Text('Hangi duraklar yeni sefere taşınsın?'),
+                  refDataAsync.maybeWhen(
+                    data: (refData) => Column(
+                      children: seciliTripDuraklari
+                          .map((stop) => CheckboxListTile(
+                                dense: true,
+                                contentPadding: EdgeInsets.zero,
+                                controlAffinity: ListTileControlAffinity.leading,
+                                value: _tasinacakStopIdleri.contains(stop.id),
+                                onChanged: (v) => setState(() {
+                                  if (v == true) {
+                                    _tasinacakStopIdleri.add(stop.id);
+                                  } else {
+                                    _tasinacakStopIdleri.remove(stop.id);
+                                  }
+                                }),
+                                title: Text(_durakEtiketi(stop, refData)),
+                                subtitle: Text('Giriş: ${_dateFormat.format(stop.firmaGirisAt)}'
+                                    '${stop.firmaCikisAt != null ? ' → Çıkış: ${_dateFormat.format(stop.firmaCikisAt!)}' : ''}'),
+                              ))
+                          .toList(),
+                    ),
+                    orElse: () => const LinearProgressIndicator(),
+                  ),
+                ],
               ],
               const SizedBox(height: 16),
               TarihSaatSecici(
-                label: 'Fabrika Giriş (eski seferi kapatır) *',
+                label: 'Fabrika Giriş (seçili seferi kapatır) *',
                 deger: _fabrikaGirisAt,
                 onChanged: (v) => setState(() => _fabrikaGirisAt = v),
               ),
@@ -459,6 +584,7 @@ class _FabrikaBolmeDialogState extends ConsumerState<_FabrikaBolmeDialog> {
               vehiclesAsync.maybeWhen(
                 data: (vehicles) => DropdownButtonFormField<String>(
                   initialValue: _seciliVehicleId,
+                  isExpanded: true,
                   decoration: const InputDecoration(
                       labelText: 'Araç Plakası (yeni sefer)', border: OutlineInputBorder()),
                   items: vehicles.map((v) => DropdownMenuItem(value: v.id, child: Text(v.plaka))).toList(),

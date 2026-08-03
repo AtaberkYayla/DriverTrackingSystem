@@ -200,17 +200,18 @@ class _MarkaPaneli extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
-                    child: Image.asset(DedemBrand.faviconAssetPath, package: 'core', height: 56),
+                    padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 20),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Image.asset(
+                      DedemBrand.logoPngAssetPath,
+                      package: 'core',
+                      height: 56,
+                    ),
                   ),
                   const SizedBox(height: 28),
-                  const Text(
-                    'Dedem Mekatronik',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w700),
-                  ),
-                  const SizedBox(height: 8),
                   Text(
                     'Şoför Takip Sistemi',
                     textAlign: TextAlign.center,

@@ -166,7 +166,7 @@ class _DurakEkleDialogState extends ConsumerState<_DurakEkleDialog> {
       if (mounted) {
         Navigator.of(context).pop();
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Durak ${sefer.tarih} tarihli sefere eklendi.')),
+          SnackBar(content: Text('Durak ${sefer.tarihGosterim} tarihli sefere eklendi.')),
         );
       }
     } catch (e) {
@@ -463,7 +463,7 @@ class _FabrikaBolmeDialogState extends ConsumerState<_FabrikaBolmeDialog> {
     final cikis = trip.fabrikaCikisAt != null ? _dateFormat.format(trip.fabrikaCikisAt!) : '-';
     final giris = trip.fabrikaGirisAt != null ? _dateFormat.format(trip.fabrikaGirisAt!) : 'Açık';
     final durakSayisi = _stopsByTrip[trip.id]?.length ?? 0;
-    return '${trip.tarih} · $cikis → $giris · $durakSayisi durak';
+    return '${trip.tarihGosterim} · $cikis → $giris · $durakSayisi durak';
   }
 
   String _durakEtiketi(TripStop stop, ReferenceData refData) {

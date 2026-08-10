@@ -13,9 +13,10 @@ String _createPdfObjectUrl(Uint8List bytes) {
   return web.URL.createObjectURL(blob);
 }
 
-/// PDF byte'larini, taraycinin varsayilan indirme davranisina (blob URL'i
-/// PDF goruntuleyicisinde acip generic bir isimle indirmesine) birakmadan,
-/// istenen dosya adiyla dogrudan indirtir.
+/// Verilen byte'lari, taraycinin varsayilan indirme davranisina (blob URL'i
+/// PDF/goruntuleyicide acip generic bir isimle indirmesine) birakmadan,
+/// istenen dosya adiyla dogrudan indirtir. PDF ve Excel raporlari dahil
+/// herhangi bir dosya turu icin kullanilir.
 ///
 /// MIME tipi bilinclieklde 'application/pdf' DEGIL, 'application/octet-stream'
 /// olarak olusturuluyor: Chrome, `download` attribute'lu bir blob:pdf linkine
@@ -27,7 +28,7 @@ String _createPdfObjectUrl(Uint8List bytes) {
 /// revokeObjectURL cagrisi bir sonraki event loop turuna erteleniyor:
 /// click() tetiklenen indirme islemi asenkron oldugu icin URL'i hemen
 /// iptal etmek bazi taraycilarda indirmeyi (dosya adi dahil) bozabiliyor.
-void downloadPdfBytes(Uint8List bytes, String fileName) {
+void downloadBytes(Uint8List bytes, String fileName) {
   final blob = web.Blob(
     [bytes.toJS].toJS,
     web.BlobPropertyBag(type: 'application/octet-stream'),

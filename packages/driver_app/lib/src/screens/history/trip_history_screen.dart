@@ -1,3 +1,4 @@
+import 'package:core/core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -53,7 +54,7 @@ class _TripTile extends ConsumerWidget {
         trip.synced ? Icons.cloud_done_outlined : Icons.cloud_upload_outlined,
         color: trip.synced ? Colors.green : Colors.orange,
       ),
-      title: Text(trip.tarih),
+      title: Text(isoTarihToGosterim(trip.tarih)),
       subtitle: stopsAsync.when(
         loading: () => const Text('...'),
         error: (e, _) => Text('Hata: $e'),

@@ -1,11 +1,13 @@
 import 'dart:typed_data';
 
+import 'package:core/core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../providers/app_providers.dart';
 import 'native_pdf_preview.dart';
+import 'trip_report_excel.dart';
 import 'trip_report_pdf.dart';
 
 class ReportScreen extends ConsumerStatefulWidget {
@@ -24,6 +26,9 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
   Future<Uint8List>? _pdfFuture;
   ReportCriteria? _criteria;
   String? _hata;
+  List<TripStopWithTrip>? _rows;
+  ReferenceData? _refData;
+  bool _excelIndiriliyor = false;
 
   bool get _hazirMi => _mod == ReportMode.sofor ? _seciliDriverId != null : _seciliVehicleId != null;
 
@@ -68,6 +73,8 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
       );
       setState(() {
         _criteria = criteria;
+        _rows = rows;
+        _refData = refData;
         _pdfFuture = buildTripReportPdf(
           rows: rows,
           refData: refData,
@@ -77,6 +84,22 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
       });
     } catch (e) {
       setState(() => _hata = 'Rapor oluşturulamadı: $e');
+    }
+  }
+
+  Future<void> _excelIndir() async {
+    final rows = _rows;
+    final refData = _refData;
+    final criteria = _criteria;
+    if (rows == null || refData == null || criteria == null) return;
+    setState(() => _excelIndiriliyor = true);
+    try {
+      final bytes = buildTripReportExcel(rows: rows, refData: refData, criteria: criteria);
+      downloadBytes(bytes, buildReportFileName(criteria, extension: 'xlsx'));
+    } catch (e) {
+      setState(() => _hata = 'Excel raporu oluşturulamadı: $e');
+    } finally {
+      if (mounted) setState(() => _excelIndiriliyor = false);
     }
   }
 
@@ -172,12 +195,24 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
                       final bytes = snapshot.data;
                       return OutlinedButton.icon(
                         icon: const Icon(Icons.download_outlined),
-                        label: const Text('İndir'),
+                        label: const Text('PDF İndir'),
                         onPressed: bytes == null
                             ? null
-                            : () => downloadPdfBytes(bytes, buildReportFileName(_criteria!)),
+                            : () => downloadBytes(bytes, buildReportFileName(_criteria!)),
                       );
                     },
+                  ),
+                if (_pdfFuture != null && _criteria != null)
+                  OutlinedButton.icon(
+                    icon: _excelIndiriliyor
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.table_chart_outlined),
+                    label: const Text('Excel İndir'),
+                    onPressed: _excelIndiriliyor ? null : _excelIndir,
                   ),
               ],
             ),

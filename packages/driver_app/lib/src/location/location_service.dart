@@ -8,8 +8,7 @@ import 'package:geolocator/geolocator.dart';
 /// plana alinirsa gonderim durur (arka plan takibi bilerek yapilmiyor, bkz.
 /// backend/driver_locations_list.php).
 class LocationService {
-  LocationService({required LocationRepository locationRepository})
-      : _locationRepository = locationRepository;
+  LocationService({required this._locationRepository});
 
   final LocationRepository _locationRepository;
   Timer? _timer;

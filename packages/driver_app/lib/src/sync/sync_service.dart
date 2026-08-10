@@ -13,12 +13,10 @@ import '../local/local_store.dart';
 /// ihtiyac duydugu icin seferler once, duraklar sonra senkronize edilir.
 class SyncService {
   SyncService({
-    required LocalStore localStore,
+    required this._localStore,
     required TripRepository tripRepository,
-    required MasterDataRepository masterDataRepository,
-  })  : _localStore = localStore,
-        _tripRepository = tripRepository,
-        _masterDataRepository = masterDataRepository;
+    required this._masterDataRepository,
+  })  : _tripRepository = tripRepository;
 
   final LocalStore _localStore;
   final TripRepository _tripRepository;

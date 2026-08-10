@@ -7,79 +7,9 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
 import '../../providers/app_providers.dart';
+import 'report_data.dart';
 
-enum ReportMode { sofor, plaka }
-
-class ReportCriteria {
-  const ReportCriteria({
-    required this.mode,
-    required this.secilenAd,
-    required this.baslangic,
-    required this.bitis,
-  });
-
-  final ReportMode mode;
-  final String secilenAd;
-  final DateTime baslangic;
-  final DateTime bitis;
-}
-
-/// Rapor kriterlerinden (soför adi/plaka + tarih araligi), indirilen PDF
-/// icin anlamli ve dosya sistemi icin guvenli bir isim uretir.
-/// Ornek: "Sefer_Raporu_Oktay_Yakut_01.07.2026-30.07.2026.pdf"
-String buildReportFileName(ReportCriteria criteria) {
-  final dateFmt = DateFormat('dd.MM.yyyy');
-  final guvenliAd = criteria.secilenAd
-      .trim()
-      .replaceAll(RegExp(r'[<>:"/\\|?*]'), '')
-      .replaceAll(RegExp(r'\s+'), '_');
-  final tarihAraligi = '${dateFmt.format(criteria.baslangic)}-${dateFmt.format(criteria.bitis)}';
-  return 'Sefer_Raporu_${guvenliAd}_$tarihAraligi.pdf';
-}
-
-class _TripGroup {
-  _TripGroup(this.trip) : stops = [];
-  final Trip trip;
-  final List<TripStop> stops;
-}
-
-/// Bir sefer grubunun siralama icin kullanilacak en erken zaman damgasi:
-/// once Fabrika Cikis, o yoksa en erken durak Girisi, o da yoksa Fabrika
-/// Giris. Hicbiri yoksa (henuz hicbir olay islenmemis) null doner ve sadece
-/// tarih alanina gore siralanir.
-DateTime? _erkenZaman(_TripGroup grup) {
-  if (grup.trip.fabrikaCikisAt != null) return grup.trip.fabrikaCikisAt;
-  if (grup.stops.isNotEmpty) {
-    return grup.stops.map((s) => s.firmaGirisAt).reduce((a, b) => a.isBefore(b) ? a : b);
-  }
-  return grup.trip.fabrikaGirisAt;
-}
-
-List<_TripGroup> _grupla(List<TripStopWithTrip> rows) {
-  final gruplar = <String, _TripGroup>{};
-  final sira = <String>[];
-  for (final row in rows) {
-    final grup = gruplar.putIfAbsent(row.trip.id, () {
-      sira.add(row.trip.id);
-      return _TripGroup(row.trip);
-    });
-    if (row.stop != null) grup.stops.add(row.stop!);
-  }
-  final liste = [for (final id in sira) gruplar[id]!];
-  // Canli ekrandan farkli olarak rapor kronolojik (eskiden yeniye) okunsun.
-  // Ayni gundeki seferler arasinda da saatine gore (erkenden gece) siralanir.
-  liste.sort((a, b) {
-    final tarihFarki = a.trip.tarih.compareTo(b.trip.tarih);
-    if (tarihFarki != 0) return tarihFarki;
-    final zamanA = _erkenZaman(a);
-    final zamanB = _erkenZaman(b);
-    if (zamanA == null && zamanB == null) return 0;
-    if (zamanA == null) return -1;
-    if (zamanB == null) return 1;
-    return zamanA.compareTo(zamanB);
-  });
-  return liste;
-}
+export 'report_data.dart' show ReportMode, ReportCriteria, buildReportFileName;
 
 const _bordo = PdfColor.fromInt(0xFF7A1F2E);
 
@@ -100,7 +30,7 @@ Future<Uint8List> buildTripReportPdf({
       (await rootBundle.load('packages/core/${DedemBrand.logoPngAssetPath}')).buffer.asUint8List();
   final logoImage = pw.MemoryImage(logoBytes);
 
-  final gruplar = _grupla(rows);
+  final gruplar = groupTripStops(rows);
   final dateFmt = DateFormat('dd.MM.yyyy');
   final dateTimeFmt = DateFormat('dd.MM.yyyy HH:mm');
   final timeFmt = DateFormat('HH:mm');
@@ -158,7 +88,7 @@ Future<Uint8List> buildTripReportPdf({
     );
   }
 
-  pw.Widget tripCard(_TripGroup grup) {
+  pw.Widget tripCard(TripGroup grup) {
     final ikincilEtiket = criteria.mode == ReportMode.sofor
         ? refData.aracPlakasi(grup.trip.vehicleId)
         : refData.surucuAdi(grup.trip.driverId);
@@ -183,7 +113,7 @@ Future<Uint8List> buildTripReportPdf({
             child: pw.Row(
               mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
               children: [
-                pw.Text('${grup.trip.tarih}   ·   $ikincilEtiket',
+                pw.Text('${grup.trip.tarihGosterim}   ·   $ikincilEtiket',
                     style: const pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
                 if (fabrika.isNotEmpty)
                   pw.Text(fabrika, style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey700)),

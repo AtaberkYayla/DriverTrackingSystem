@@ -74,8 +74,8 @@ class TripRepository {
     int limit = 500,
   }) async {
     final rows = await api.get('/trips_list.php', query: {
-      if (driverId != null) 'driver_id': driverId,
-      if (vehicleId != null) 'vehicle_id': vehicleId,
+      'driver_id': ?driverId,
+      'vehicle_id': ?vehicleId,
       if (onayDurumu != null) 'onay_durumu': onayDurumu.toJson(),
       if (seferDurumu != null) 'sefer_durumu': seferDurumu.toJson(),
       if (baslangic != null) 'baslangic': _dateStr(baslangic),
@@ -104,7 +104,7 @@ class TripRepository {
       'stop_id': stopId,
       'onay_durumu': onayDurumu.toJson(),
       'sefer_durumu': seferDurumu.toJson(),
-      if (notlar != null) 'notlar': notlar,
+      'notlar': ?notlar,
     }) as Map<String, dynamic>;
     return TripStop.fromJson(row);
   }

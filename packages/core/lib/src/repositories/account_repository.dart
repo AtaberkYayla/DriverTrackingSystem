@@ -38,11 +38,11 @@ class AccountRepository {
   }) async {
     await api.post('/accounts_update.php', body: {
       'user_id': userId,
-      if (fullName != null) 'full_name': fullName,
-      if (username != null) 'username': username,
-      if (password != null) 'password': password,
+      'full_name': ?fullName,
+      'username': ?username,
+      'password': ?password,
       if (role != null) 'role': role.toJson(),
-      if (aktif != null) 'aktif': aktif,
+      'aktif': ?aktif,
     });
   }
 

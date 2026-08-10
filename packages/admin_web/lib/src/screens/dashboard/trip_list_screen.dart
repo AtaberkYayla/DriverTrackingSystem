@@ -194,7 +194,7 @@ class _TripGroupCard extends ConsumerWidget {
         const SizedBox(width: 6),
         Expanded(
           flex: 2,
-          child: Text(trip.tarih, style: const TextStyle(fontWeight: FontWeight.w600)),
+          child: Text(trip.tarihGosterim, style: const TextStyle(fontWeight: FontWeight.w600)),
         ),
         Icon(Icons.local_shipping_outlined, size: 15, color: Colors.grey.shade600),
         const SizedBox(width: 6),
@@ -299,7 +299,7 @@ class _TripGroupCard extends ConsumerWidget {
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 _OnayChip(durum: stop.onayDurumu),
-                _SeferChip(durum: stop.seferDurumu),
+                _SeferChip(durum: stop.seferDurumu, kapandiMi: stop.firmaCikisAt != null),
                 if (hizliOnaylanabilir)
                   IconButton(
                     icon: Icon(Icons.check_circle_outline, color: Colors.green.shade700),
@@ -487,19 +487,26 @@ class _OnayChip extends StatelessWidget {
 }
 
 class _SeferChip extends StatelessWidget {
-  const _SeferChip({required this.durum});
+  const _SeferChip({required this.durum, required this.kapandiMi});
 
   final SeferDurumu durum;
 
+  /// Durak firma cikisi yapilip yapilmadigi (stop.firmaCikisAt != null).
+  /// Sefer durumu elle basarili/basarisiz olarak degistirilmediyse ve durak
+  /// kapandiysa, varsayilan "Devam Ediyor" etiketi yaniltici oluyordu; bu
+  /// durumda "Tamamlandı" gosterilir.
+  final bool kapandiMi;
+
   @override
   Widget build(BuildContext context) {
-    final renk = switch (durum) {
-      SeferDurumu.devamEdiyor => Colors.blueGrey,
-      SeferDurumu.basarili => Colors.green,
-      SeferDurumu.basarisiz => Colors.red,
+    final (etiket, renk) = switch (durum) {
+      SeferDurumu.basarili => (_seferLabel(durum), Colors.green),
+      SeferDurumu.basarisiz => (_seferLabel(durum), Colors.red),
+      SeferDurumu.devamEdiyor when kapandiMi => ('Tamamlandı', Colors.green),
+      SeferDurumu.devamEdiyor => (_seferLabel(durum), Colors.blueGrey),
     };
     return Chip(
-      label: Text(_seferLabel(durum)),
+      label: Text(etiket),
       backgroundColor: renk.withValues(alpha: 0.15),
       labelStyle: TextStyle(color: renk.shade800),
     );

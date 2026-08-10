@@ -291,7 +291,7 @@ class _TripEditScreenState extends ConsumerState<TripEditScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Sefer - ${widget.trip.tarih}'),
+        title: Text('Sefer - ${widget.trip.tarihGosterim}'),
         actions: [
           if (isManagerOrAdmin)
             IconButton(
@@ -315,7 +315,7 @@ class _TripEditScreenState extends ConsumerState<TripEditScreen> {
         children: [
           _bilgiSatiri('Şoför', refData.surucuAdi(widget.trip.driverId)),
           _bilgiSatiri('Araç Plakası', refData.aracPlakasi(widget.trip.vehicleId)),
-          _bilgiSatiri('Tarih', widget.trip.tarih),
+          _bilgiSatiri('Tarih', widget.trip.tarihGosterim),
           _bilgiSatiri(
             'Fabrika Çıkış',
             _fabrikaCikisAt == null ? '-' : _dateFormat.format(_fabrikaCikisAt!),

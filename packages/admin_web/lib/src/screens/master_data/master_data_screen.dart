@@ -141,6 +141,7 @@ class _VehiclesTab extends ConsumerWidget {
               controller: plakaController,
               decoration: const InputDecoration(labelText: 'Plaka'),
             ),
+            const SizedBox(height: 16),
             TextField(
               controller: aciklamaController,
               decoration: const InputDecoration(labelText: 'Açıklama'),
@@ -242,6 +243,7 @@ class _TripTypesTab extends ConsumerWidget {
                 controller: labelController,
                 decoration: const InputDecoration(labelText: 'Ad (ör. Satın Alma Sevkiyatı)'),
               ),
+              const SizedBox(height: 16),
               TextField(
                 controller: codeController,
                 decoration: const InputDecoration(labelText: 'Kod (ör. SATIN_ALMA_SEVKIYATI)'),
@@ -397,81 +399,130 @@ class _CompaniesTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final companiesAsync = ref.watch(companiesProvider);
+    final tripTypesAsync = ref.watch(tripTypesProvider);
     final duzenlenebilir = ref.watch(isManagerOrAdminProvider);
     return companiesAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (e, _) => Center(child: Text('Hata: $e')),
-      data: (companies) => Scaffold(
-        body: ListView(
-          children: companies
-              .map((c) => ListTile(
-                    title: Text(c.name),
-                    subtitle: Text(c.sehir ?? ''),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Switch(
-                          value: c.aktif,
-                          onChanged: !duzenlenebilir
-                              ? null
-                              : (val) async {
-                                  await ref.read(masterDataRepositoryProvider).upsertCompany(
-                                        Company(id: c.id, name: c.name, sehir: c.sehir, aktif: val),
-                                      );
-                                  ref.invalidate(companiesProvider);
-                                },
-                        ),
-                        if (duzenlenebilir)
-                          IconButton(
-                            icon: const Icon(Icons.delete_outline),
-                            onPressed: () => _sil(
-                              context,
-                              ref,
-                              baslik: 'Şirketi Sil',
-                              sil: () => ref.read(masterDataRepositoryProvider).deleteCompany(c.id),
-                              sonrasindaGuncelle: () => ref.invalidate(companiesProvider),
-                            ),
+      data: (companies) {
+        final tripTypes = tripTypesAsync.value ?? const <TripType>[];
+        String kategoriEtiketi(Company c) => c.tripTypeIds
+            .map((id) => tripTypes.where((t) => t.id == id).firstOrNull?.label)
+            .whereType<String>()
+            .join(', ');
+        return Scaffold(
+          body: ListView(
+            children: companies
+                .map((c) => ListTile(
+                      title: Text(c.name),
+                      subtitle: Text([
+                        if ((c.sehir ?? '').isNotEmpty) c.sehir!,
+                        kategoriEtiketi(c),
+                      ].where((s) => s.isNotEmpty).join(' · ')),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Switch(
+                            value: c.aktif,
+                            onChanged: !duzenlenebilir
+                                ? null
+                                : (val) async {
+                                    await ref.read(masterDataRepositoryProvider).upsertCompany(
+                                          Company(
+                                            id: c.id,
+                                            name: c.name,
+                                            sehir: c.sehir,
+                                            tripTypeIds: c.tripTypeIds,
+                                            aktif: val,
+                                          ),
+                                        );
+                                    ref.invalidate(companiesProvider);
+                                  },
                           ),
-                      ],
-                    ),
-                    onTap: duzenlenebilir ? () => _dialog(context, ref, c) : null,
-                  ))
-              .toList(),
-        ),
-        floatingActionButton: !duzenlenebilir
-            ? null
-            : FloatingActionButton(
-                onPressed: () => _dialog(context, ref, null),
-                child: const Icon(Icons.add),
-              ),
-      ),
+                          if (duzenlenebilir)
+                            IconButton(
+                              icon: const Icon(Icons.delete_outline),
+                              onPressed: () => _sil(
+                                context,
+                                ref,
+                                baslik: 'Şirketi Sil',
+                                sil: () => ref.read(masterDataRepositoryProvider).deleteCompany(c.id),
+                                sonrasindaGuncelle: () => ref.invalidate(companiesProvider),
+                              ),
+                            ),
+                        ],
+                      ),
+                      onTap: duzenlenebilir ? () => _dialog(context, ref, c, tripTypes) : null,
+                    ))
+                .toList(),
+          ),
+          floatingActionButton: !duzenlenebilir
+              ? null
+              : FloatingActionButton(
+                  onPressed: () => _dialog(context, ref, null, tripTypes),
+                  child: const Icon(Icons.add),
+                ),
+        );
+      },
     );
   }
 
-  Future<void> _dialog(BuildContext context, WidgetRef ref, Company? company) async {
+  Future<void> _dialog(
+    BuildContext context,
+    WidgetRef ref,
+    Company? company,
+    List<TripType> tripTypes,
+  ) async {
     final nameController = TextEditingController(text: company?.name);
     final sehirController = TextEditingController(text: company?.sehir);
+    final seciliTurler = {...?company?.tripTypeIds};
     final kaydet = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(company == null ? 'Yeni Şirket' : 'Şirketi Düzenle'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: nameController,
-              decoration: const InputDecoration(labelText: 'Şirket Adı'),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: Text(company == null ? 'Yeni Şirket' : 'Şirketi Düzenle'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                TextField(
+                  controller: nameController,
+                  decoration: const InputDecoration(labelText: 'Şirket Adı'),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: sehirController,
+                  decoration: const InputDecoration(labelText: 'Şehir'),
+                ),
+                const SizedBox(height: 16),
+                const Text('Kategoriler (Seyahat Türleri)'),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 4,
+                  children: tripTypes
+                      .map((t) => FilterChip(
+                            label: Text(t.label),
+                            selected: seciliTurler.contains(t.id),
+                            onSelected: (secildi) => setState(() {
+                              if (secildi) {
+                                seciliTurler.add(t.id);
+                              } else {
+                                seciliTurler.remove(t.id);
+                              }
+                            }),
+                          ))
+                      .toList(),
+                ),
+              ],
             ),
-            TextField(
-              controller: sehirController,
-              decoration: const InputDecoration(labelText: 'Şehir'),
-            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('İptal')),
+            FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Kaydet')),
           ],
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('İptal')),
-          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Kaydet')),
-        ],
       ),
     );
     if (kaydet != true || nameController.text.trim().isEmpty) return;
@@ -479,6 +530,7 @@ class _CompaniesTab extends ConsumerWidget {
           id: company?.id ?? _uuid.v4(),
           name: nameController.text.trim(),
           sehir: sehirController.text.trim().isEmpty ? null : sehirController.text.trim(),
+          tripTypeIds: seciliTurler.toList(),
           aktif: company?.aktif ?? true,
         ));
     ref.invalidate(companiesProvider);

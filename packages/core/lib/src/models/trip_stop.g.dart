@@ -35,6 +35,7 @@ TripStop _$TripStopFromJson(Map<String, dynamic> json) => TripStop(
       $enumDecodeNullable(_$SeferDurumuEnumMap, json['sefer_durumu']) ??
       SeferDurumu.devamEdiyor,
   notlar: json['notlar'] as String?,
+  notlarCikis: json['notlar_cikis'] as String?,
 );
 
 Map<String, dynamic> _$TripStopToJson(TripStop instance) => <String, dynamic>{
@@ -58,6 +59,7 @@ Map<String, dynamic> _$TripStopToJson(TripStop instance) => <String, dynamic>{
   'onaylandi_at': instance.onaylandiAt?.toIso8601String(),
   'sefer_durumu': instance.seferDurumu.toJson(),
   'notlar': instance.notlar,
+  'notlar_cikis': instance.notlarCikis,
 };
 
 const _$OnayDurumuEnumMap = {

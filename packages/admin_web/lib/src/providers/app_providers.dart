@@ -11,6 +11,11 @@ final masterDataRepositoryProvider =
 
 final accountRepositoryProvider = Provider<AccountRepository>((ref) => AccountRepository());
 
+final mailSettingsRepositoryProvider =
+    Provider<MailSettingsRepository>((ref) => MailSettingsRepository());
+
+final locationRepositoryProvider = Provider<LocationRepository>((ref) => LocationRepository());
+
 final authStateChangesProvider = StreamProvider<AuthState>((ref) {
   return ref.watch(authRepositoryProvider).onAuthStateChange;
 });
@@ -48,6 +53,14 @@ final isOfficeProvider = Provider<bool>((ref) {
   return profile?.role == AppRole.office;
 });
 
+/// Operator mu? Sadece admin_web'den elle sefer olusturup (yalnizca kendi
+/// olusturdugu seferleri) duzenleyebilir ve rapor olusturabilir - hesap
+/// yonetimi, master veri, mail ayarlari ve canli konuma erisemez.
+final isOperatorProvider = Provider<bool>((ref) {
+  final profile = ref.watch(currentProfileProvider).value;
+  return profile?.role == AppRole.operator;
+});
+
 final accountsProvider = FutureProvider<List<Account>>((ref) {
   return ref.watch(accountRepositoryProvider).listAccounts();
 });
@@ -66,6 +79,10 @@ final requestersProvider = FutureProvider<List<Requester>>((ref) {
 
 final companiesProvider = FutureProvider<List<Company>>((ref) {
   return ref.watch(masterDataRepositoryProvider).fetchCompanies(sadeceAktif: false);
+});
+
+final turkeyLocationsProvider = FutureProvider<TurkeyLocations>((ref) {
+  return TurkeyLocations.load();
 });
 
 class TripFilters {
@@ -122,21 +139,27 @@ final tripFiltersProvider = StateProvider<TripFilters>(
 );
 
 /// PHP/MySQL backend'inde Postgres Realtime'in karsiligi yok (SSH/root
-/// olmadan websocket sunucusu kurulamaz) - bunun yerine sefer listesi 6
-/// saniyede bir hizli polling ile tazelenir. Bu, soforun bir islem
-/// yapmasindan sonra admin panelin gecikmesini pratikte fark edilmeyecek
-/// kadar kisaltir (eski 60 saniyelik araliktan). UI tarafinda
-/// (trip_list_screen) onceki veri elde tutulup sadece arka planda
-/// yenilendigi icin bu tazeleme goze batmaz.
-final autoRefreshTickProvider = StreamProvider.autoDispose<int>((ref) {
-  return Stream.periodic(const Duration(seconds: 6), (i) => i);
+/// olmadan websocket sunucusu kurulamaz) - bunun yerine sefer listesi
+/// periyodik polling ile tazelenir. Eskiden 6 saniyede birdi; sunucuyu
+/// gereksiz yordugu icin varsayilan 30 dakikaya cikarildi - anlik guncelleme
+/// icin ekrandaki manuel yenile butonu kullanilir (bkz. trip_list_screen).
+final tripListAutoRefreshTickProvider = StreamProvider.autoDispose<int>((ref) {
+  return Stream.periodic(const Duration(minutes: 30), (i) => i);
+});
+
+/// Canli harita icin ayri ve daha sik bir tik: konum takibi "canli" hissi
+/// vermesi gerektigi icin sefer listesinden daha kisa tutuldu, ama yine de
+/// eski 6 saniyeden cok daha seyrek (5 dakika) - anlik guncelleme icin
+/// haritadaki manuel yenile butonu kullanilir (bkz. live_map_screen).
+final mapAutoRefreshTickProvider = StreamProvider.autoDispose<int>((ref) {
+  return Stream.periodic(const Duration(minutes: 5), (i) => i);
 });
 
 // Onay Verici (office) hesabi kaldirildigindan (bkz. isOfficeProvider)
 // admin_web'e giren herkes (yonetici/admin) her seferi gorebilir; talep
 // eden bazli kisitlama artik gerekmiyor.
 final tripListProvider = FutureProvider.autoDispose<List<TripStopWithTrip>>((ref) async {
-  ref.watch(autoRefreshTickProvider);
+  ref.watch(tripListAutoRefreshTickProvider);
   final filters = ref.watch(tripFiltersProvider);
 
   return ref.watch(tripRepositoryProvider).fetchAllStopsWithTrip(
@@ -147,6 +170,17 @@ final tripListProvider = FutureProvider.autoDispose<List<TripStopWithTrip>>((ref
         baslangic: filters.baslangic,
         bitis: filters.bitis,
       );
+});
+
+final mailSettingsProvider = FutureProvider<MailSettings>((ref) {
+  return ref.watch(mailSettingsRepositoryProvider).fetch();
+});
+
+/// Canli harita ekrani icin - kendi (5 dakikalik) polling ritmini kullanir
+/// (bkz. mapAutoRefreshTickProvider).
+final driverLocationsProvider = FutureProvider.autoDispose<List<DriverLocation>>((ref) {
+  ref.watch(mapAutoRefreshTickProvider);
+  return ref.watch(locationRepositoryProvider).fetchDriverLocations();
 });
 
 final allDriversProvider = FutureProvider<List<Profile>>((ref) async {
@@ -181,7 +215,7 @@ class ReferenceData {
 }
 
 final referenceDataProvider = FutureProvider<ReferenceData>((ref) async {
-  ref.watch(autoRefreshTickProvider);
+  ref.watch(tripListAutoRefreshTickProvider);
   final drivers = await ref.watch(allDriversProvider.future);
   final vehicles = await ref.watch(vehiclesProvider.future);
   final tripTypes = await ref.watch(tripTypesProvider.future);

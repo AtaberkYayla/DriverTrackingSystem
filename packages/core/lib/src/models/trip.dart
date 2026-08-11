@@ -15,6 +15,7 @@ class Trip {
     required this.tarih,
     this.fabrikaCikisAt,
     this.fabrikaGirisAt,
+    this.createdByUserId,
   });
 
   final String id;
@@ -25,7 +26,17 @@ class Trip {
   final DateTime? fabrikaCikisAt;
   final DateTime? fabrikaGirisAt;
 
+  /// admin_web'den elle (manager/admin/operator tarafindan) olusturulan
+  /// seferlerde kim olusturduysa o kullanicinin id'sini tutar; driver_app'ten
+  /// gelen seferlerde hep null'dur. Operator'un sadece kendi olusturdugu
+  /// seferi duzenleyebilmesi bu alana gore arayuzde de yansitilir.
+  final String? createdByUserId;
+
   bool get aktifMi => fabrikaGirisAt == null;
+
+  /// [tarih] sunucuda/sirlamada kullanilan "yyyy-MM-dd" bicimindedir;
+  /// arayuzde her yerde gg.aa.yyyy gosterilmesi icin bu getter kullanilir.
+  String get tarihGosterim => isoTarihToGosterim(tarih);
 
   factory Trip.fromJson(Map<String, dynamic> json) => _$TripFromJson(json);
 
@@ -57,4 +68,17 @@ class Trip {
       fabrikaGirisAt: fabrikaGirisAt ?? this.fabrikaGirisAt,
     );
   }
+}
+
+/// Sunucuda/sirlamada kullanilan "yyyy-MM-dd" bicimindeki bir tarihi,
+/// arayuzde standart olarak kullanilan gg.aa.yyyy bicimine cevirir.
+/// [Trip.tarih] disinda, aracin yerel veritabani (driver_app) gibi ayni
+/// ham bicimi tasiyan diger yerlerde de kullanilabilsin diye top-level
+/// bir fonksiyon olarak tanimlanir. Beklenmeyen bir bicimle karsilasilirsa
+/// (ör. bos veri) girdi oldugu gibi dondurulur.
+String isoTarihToGosterim(String isoTarih) {
+  final parcalar = isoTarih.split('-');
+  if (parcalar.length != 3) return isoTarih;
+  final [yil, ay, gun] = parcalar;
+  return '$gun.$ay.$yil';
 }

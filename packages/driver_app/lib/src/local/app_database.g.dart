@@ -871,6 +871,17 @@ class $TripStopsCacheTable extends TripStopsCache
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _notlarCikisMeta = const VerificationMeta(
+    'notlarCikis',
+  );
+  @override
+  late final GeneratedColumn<String> notlarCikis = GeneratedColumn<String>(
+    'notlar_cikis',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _syncedMeta = const VerificationMeta('synced');
   @override
   late final GeneratedColumn<bool> synced = GeneratedColumn<bool>(
@@ -937,6 +948,7 @@ class $TripStopsCacheTable extends TripStopsCache
     irsaliyeNoCikis,
     firmaCikisAt,
     notlar,
+    notlarCikis,
     synced,
     retryCount,
     lastError,
@@ -1094,6 +1106,15 @@ class $TripStopsCacheTable extends TripStopsCache
         notlar.isAcceptableOrUnknown(data['notlar']!, _notlarMeta),
       );
     }
+    if (data.containsKey('notlar_cikis')) {
+      context.handle(
+        _notlarCikisMeta,
+        notlarCikis.isAcceptableOrUnknown(
+          data['notlar_cikis']!,
+          _notlarCikisMeta,
+        ),
+      );
+    }
     if (data.containsKey('synced')) {
       context.handle(
         _syncedMeta,
@@ -1196,6 +1217,10 @@ class $TripStopsCacheTable extends TripStopsCache
         DriftSqlType.string,
         data['${effectivePrefix}notlar'],
       ),
+      notlarCikis: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}notlar_cikis'],
+      ),
       synced: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}synced'],
@@ -1239,6 +1264,7 @@ class TripStopsCacheData extends DataClass
   final String? irsaliyeNoCikis;
   final DateTime? firmaCikisAt;
   final String? notlar;
+  final String? notlarCikis;
   final bool synced;
   final int retryCount;
   final String? lastError;
@@ -1260,6 +1286,7 @@ class TripStopsCacheData extends DataClass
     this.irsaliyeNoCikis,
     this.firmaCikisAt,
     this.notlar,
+    this.notlarCikis,
     required this.synced,
     required this.retryCount,
     this.lastError,
@@ -1307,6 +1334,9 @@ class TripStopsCacheData extends DataClass
     }
     if (!nullToAbsent || notlar != null) {
       map['notlar'] = Variable<String>(notlar);
+    }
+    if (!nullToAbsent || notlarCikis != null) {
+      map['notlar_cikis'] = Variable<String>(notlarCikis);
     }
     map['synced'] = Variable<bool>(synced);
     map['retry_count'] = Variable<int>(retryCount);
@@ -1359,6 +1389,9 @@ class TripStopsCacheData extends DataClass
       notlar: notlar == null && nullToAbsent
           ? const Value.absent()
           : Value(notlar),
+      notlarCikis: notlarCikis == null && nullToAbsent
+          ? const Value.absent()
+          : Value(notlarCikis),
       synced: Value(synced),
       retryCount: Value(retryCount),
       lastError: lastError == null && nullToAbsent
@@ -1392,6 +1425,7 @@ class TripStopsCacheData extends DataClass
       irsaliyeNoCikis: serializer.fromJson<String?>(json['irsaliyeNoCikis']),
       firmaCikisAt: serializer.fromJson<DateTime?>(json['firmaCikisAt']),
       notlar: serializer.fromJson<String?>(json['notlar']),
+      notlarCikis: serializer.fromJson<String?>(json['notlarCikis']),
       synced: serializer.fromJson<bool>(json['synced']),
       retryCount: serializer.fromJson<int>(json['retryCount']),
       lastError: serializer.fromJson<String?>(json['lastError']),
@@ -1418,6 +1452,7 @@ class TripStopsCacheData extends DataClass
       'irsaliyeNoCikis': serializer.toJson<String?>(irsaliyeNoCikis),
       'firmaCikisAt': serializer.toJson<DateTime?>(firmaCikisAt),
       'notlar': serializer.toJson<String?>(notlar),
+      'notlarCikis': serializer.toJson<String?>(notlarCikis),
       'synced': serializer.toJson<bool>(synced),
       'retryCount': serializer.toJson<int>(retryCount),
       'lastError': serializer.toJson<String?>(lastError),
@@ -1442,6 +1477,7 @@ class TripStopsCacheData extends DataClass
     Value<String?> irsaliyeNoCikis = const Value.absent(),
     Value<DateTime?> firmaCikisAt = const Value.absent(),
     Value<String?> notlar = const Value.absent(),
+    Value<String?> notlarCikis = const Value.absent(),
     bool? synced,
     int? retryCount,
     Value<String?> lastError = const Value.absent(),
@@ -1471,6 +1507,7 @@ class TripStopsCacheData extends DataClass
         : this.irsaliyeNoCikis,
     firmaCikisAt: firmaCikisAt.present ? firmaCikisAt.value : this.firmaCikisAt,
     notlar: notlar.present ? notlar.value : this.notlar,
+    notlarCikis: notlarCikis.present ? notlarCikis.value : this.notlarCikis,
     synced: synced ?? this.synced,
     retryCount: retryCount ?? this.retryCount,
     lastError: lastError.present ? lastError.value : this.lastError,
@@ -1518,6 +1555,9 @@ class TripStopsCacheData extends DataClass
           ? data.firmaCikisAt.value
           : this.firmaCikisAt,
       notlar: data.notlar.present ? data.notlar.value : this.notlar,
+      notlarCikis: data.notlarCikis.present
+          ? data.notlarCikis.value
+          : this.notlarCikis,
       synced: data.synced.present ? data.synced.value : this.synced,
       retryCount: data.retryCount.present
           ? data.retryCount.value
@@ -1548,6 +1588,7 @@ class TripStopsCacheData extends DataClass
           ..write('irsaliyeNoCikis: $irsaliyeNoCikis, ')
           ..write('firmaCikisAt: $firmaCikisAt, ')
           ..write('notlar: $notlar, ')
+          ..write('notlarCikis: $notlarCikis, ')
           ..write('synced: $synced, ')
           ..write('retryCount: $retryCount, ')
           ..write('lastError: $lastError, ')
@@ -1557,7 +1598,7 @@ class TripStopsCacheData extends DataClass
   }
 
   @override
-  int get hashCode => Object.hash(
+  int get hashCode => Object.hashAll([
     clientStopId,
     serverId,
     clientTripId,
@@ -1574,11 +1615,12 @@ class TripStopsCacheData extends DataClass
     irsaliyeNoCikis,
     firmaCikisAt,
     notlar,
+    notlarCikis,
     synced,
     retryCount,
     lastError,
     updatedLocallyAt,
-  );
+  ]);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1599,6 +1641,7 @@ class TripStopsCacheData extends DataClass
           other.irsaliyeNoCikis == this.irsaliyeNoCikis &&
           other.firmaCikisAt == this.firmaCikisAt &&
           other.notlar == this.notlar &&
+          other.notlarCikis == this.notlarCikis &&
           other.synced == this.synced &&
           other.retryCount == this.retryCount &&
           other.lastError == this.lastError &&
@@ -1622,6 +1665,7 @@ class TripStopsCacheCompanion extends UpdateCompanion<TripStopsCacheData> {
   final Value<String?> irsaliyeNoCikis;
   final Value<DateTime?> firmaCikisAt;
   final Value<String?> notlar;
+  final Value<String?> notlarCikis;
   final Value<bool> synced;
   final Value<int> retryCount;
   final Value<String?> lastError;
@@ -1644,6 +1688,7 @@ class TripStopsCacheCompanion extends UpdateCompanion<TripStopsCacheData> {
     this.irsaliyeNoCikis = const Value.absent(),
     this.firmaCikisAt = const Value.absent(),
     this.notlar = const Value.absent(),
+    this.notlarCikis = const Value.absent(),
     this.synced = const Value.absent(),
     this.retryCount = const Value.absent(),
     this.lastError = const Value.absent(),
@@ -1667,6 +1712,7 @@ class TripStopsCacheCompanion extends UpdateCompanion<TripStopsCacheData> {
     this.irsaliyeNoCikis = const Value.absent(),
     this.firmaCikisAt = const Value.absent(),
     this.notlar = const Value.absent(),
+    this.notlarCikis = const Value.absent(),
     this.synced = const Value.absent(),
     this.retryCount = const Value.absent(),
     this.lastError = const Value.absent(),
@@ -1694,6 +1740,7 @@ class TripStopsCacheCompanion extends UpdateCompanion<TripStopsCacheData> {
     Expression<String>? irsaliyeNoCikis,
     Expression<DateTime>? firmaCikisAt,
     Expression<String>? notlar,
+    Expression<String>? notlarCikis,
     Expression<bool>? synced,
     Expression<int>? retryCount,
     Expression<String>? lastError,
@@ -1717,6 +1764,7 @@ class TripStopsCacheCompanion extends UpdateCompanion<TripStopsCacheData> {
       if (irsaliyeNoCikis != null) 'irsaliye_no_cikis': irsaliyeNoCikis,
       if (firmaCikisAt != null) 'firma_cikis_at': firmaCikisAt,
       if (notlar != null) 'notlar': notlar,
+      if (notlarCikis != null) 'notlar_cikis': notlarCikis,
       if (synced != null) 'synced': synced,
       if (retryCount != null) 'retry_count': retryCount,
       if (lastError != null) 'last_error': lastError,
@@ -1742,6 +1790,7 @@ class TripStopsCacheCompanion extends UpdateCompanion<TripStopsCacheData> {
     Value<String?>? irsaliyeNoCikis,
     Value<DateTime?>? firmaCikisAt,
     Value<String?>? notlar,
+    Value<String?>? notlarCikis,
     Value<bool>? synced,
     Value<int>? retryCount,
     Value<String?>? lastError,
@@ -1765,6 +1814,7 @@ class TripStopsCacheCompanion extends UpdateCompanion<TripStopsCacheData> {
       irsaliyeNoCikis: irsaliyeNoCikis ?? this.irsaliyeNoCikis,
       firmaCikisAt: firmaCikisAt ?? this.firmaCikisAt,
       notlar: notlar ?? this.notlar,
+      notlarCikis: notlarCikis ?? this.notlarCikis,
       synced: synced ?? this.synced,
       retryCount: retryCount ?? this.retryCount,
       lastError: lastError ?? this.lastError,
@@ -1824,6 +1874,9 @@ class TripStopsCacheCompanion extends UpdateCompanion<TripStopsCacheData> {
     if (notlar.present) {
       map['notlar'] = Variable<String>(notlar.value);
     }
+    if (notlarCikis.present) {
+      map['notlar_cikis'] = Variable<String>(notlarCikis.value);
+    }
     if (synced.present) {
       map['synced'] = Variable<bool>(synced.value);
     }
@@ -1861,6 +1914,7 @@ class TripStopsCacheCompanion extends UpdateCompanion<TripStopsCacheData> {
           ..write('irsaliyeNoCikis: $irsaliyeNoCikis, ')
           ..write('firmaCikisAt: $firmaCikisAt, ')
           ..write('notlar: $notlar, ')
+          ..write('notlarCikis: $notlarCikis, ')
           ..write('synced: $synced, ')
           ..write('retryCount: $retryCount, ')
           ..write('lastError: $lastError, ')
@@ -2882,6 +2936,18 @@ class $CompaniesCacheTable extends CompaniesCache
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _tripTypeIdsMeta = const VerificationMeta(
+    'tripTypeIds',
+  );
+  @override
+  late final GeneratedColumn<String> tripTypeIds = GeneratedColumn<String>(
+    'trip_type_ids',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
   static const VerificationMeta _aktifMeta = const VerificationMeta('aktif');
   @override
   late final GeneratedColumn<bool> aktif = GeneratedColumn<bool>(
@@ -2896,7 +2962,7 @@ class $CompaniesCacheTable extends CompaniesCache
     defaultValue: const Constant(true),
   );
   @override
-  List<GeneratedColumn> get $columns => [id, name, sehir, aktif];
+  List<GeneratedColumn> get $columns => [id, name, sehir, tripTypeIds, aktif];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -2928,6 +2994,15 @@ class $CompaniesCacheTable extends CompaniesCache
         sehir.isAcceptableOrUnknown(data['sehir']!, _sehirMeta),
       );
     }
+    if (data.containsKey('trip_type_ids')) {
+      context.handle(
+        _tripTypeIdsMeta,
+        tripTypeIds.isAcceptableOrUnknown(
+          data['trip_type_ids']!,
+          _tripTypeIdsMeta,
+        ),
+      );
+    }
     if (data.containsKey('aktif')) {
       context.handle(
         _aktifMeta,
@@ -2955,6 +3030,10 @@ class $CompaniesCacheTable extends CompaniesCache
         DriftSqlType.string,
         data['${effectivePrefix}sehir'],
       ),
+      tripTypeIds: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}trip_type_ids'],
+      )!,
       aktif: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}aktif'],
@@ -2973,11 +3052,15 @@ class CompaniesCacheData extends DataClass
   final String id;
   final String name;
   final String? sehir;
+
+  /// Virgulle ayrilmis trip_type id listesi (bos string = hic kategorisi yok).
+  final String tripTypeIds;
   final bool aktif;
   const CompaniesCacheData({
     required this.id,
     required this.name,
     this.sehir,
+    required this.tripTypeIds,
     required this.aktif,
   });
   @override
@@ -2988,6 +3071,7 @@ class CompaniesCacheData extends DataClass
     if (!nullToAbsent || sehir != null) {
       map['sehir'] = Variable<String>(sehir);
     }
+    map['trip_type_ids'] = Variable<String>(tripTypeIds);
     map['aktif'] = Variable<bool>(aktif);
     return map;
   }
@@ -2999,6 +3083,7 @@ class CompaniesCacheData extends DataClass
       sehir: sehir == null && nullToAbsent
           ? const Value.absent()
           : Value(sehir),
+      tripTypeIds: Value(tripTypeIds),
       aktif: Value(aktif),
     );
   }
@@ -3012,6 +3097,7 @@ class CompaniesCacheData extends DataClass
       id: serializer.fromJson<String>(json['id']),
       name: serializer.fromJson<String>(json['name']),
       sehir: serializer.fromJson<String?>(json['sehir']),
+      tripTypeIds: serializer.fromJson<String>(json['tripTypeIds']),
       aktif: serializer.fromJson<bool>(json['aktif']),
     );
   }
@@ -3022,6 +3108,7 @@ class CompaniesCacheData extends DataClass
       'id': serializer.toJson<String>(id),
       'name': serializer.toJson<String>(name),
       'sehir': serializer.toJson<String?>(sehir),
+      'tripTypeIds': serializer.toJson<String>(tripTypeIds),
       'aktif': serializer.toJson<bool>(aktif),
     };
   }
@@ -3030,11 +3117,13 @@ class CompaniesCacheData extends DataClass
     String? id,
     String? name,
     Value<String?> sehir = const Value.absent(),
+    String? tripTypeIds,
     bool? aktif,
   }) => CompaniesCacheData(
     id: id ?? this.id,
     name: name ?? this.name,
     sehir: sehir.present ? sehir.value : this.sehir,
+    tripTypeIds: tripTypeIds ?? this.tripTypeIds,
     aktif: aktif ?? this.aktif,
   );
   CompaniesCacheData copyWithCompanion(CompaniesCacheCompanion data) {
@@ -3042,6 +3131,9 @@ class CompaniesCacheData extends DataClass
       id: data.id.present ? data.id.value : this.id,
       name: data.name.present ? data.name.value : this.name,
       sehir: data.sehir.present ? data.sehir.value : this.sehir,
+      tripTypeIds: data.tripTypeIds.present
+          ? data.tripTypeIds.value
+          : this.tripTypeIds,
       aktif: data.aktif.present ? data.aktif.value : this.aktif,
     );
   }
@@ -3052,13 +3144,14 @@ class CompaniesCacheData extends DataClass
           ..write('id: $id, ')
           ..write('name: $name, ')
           ..write('sehir: $sehir, ')
+          ..write('tripTypeIds: $tripTypeIds, ')
           ..write('aktif: $aktif')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, name, sehir, aktif);
+  int get hashCode => Object.hash(id, name, sehir, tripTypeIds, aktif);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -3066,6 +3159,7 @@ class CompaniesCacheData extends DataClass
           other.id == this.id &&
           other.name == this.name &&
           other.sehir == this.sehir &&
+          other.tripTypeIds == this.tripTypeIds &&
           other.aktif == this.aktif);
 }
 
@@ -3073,12 +3167,14 @@ class CompaniesCacheCompanion extends UpdateCompanion<CompaniesCacheData> {
   final Value<String> id;
   final Value<String> name;
   final Value<String?> sehir;
+  final Value<String> tripTypeIds;
   final Value<bool> aktif;
   final Value<int> rowid;
   const CompaniesCacheCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
     this.sehir = const Value.absent(),
+    this.tripTypeIds = const Value.absent(),
     this.aktif = const Value.absent(),
     this.rowid = const Value.absent(),
   });
@@ -3086,6 +3182,7 @@ class CompaniesCacheCompanion extends UpdateCompanion<CompaniesCacheData> {
     required String id,
     required String name,
     this.sehir = const Value.absent(),
+    this.tripTypeIds = const Value.absent(),
     this.aktif = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
@@ -3094,6 +3191,7 @@ class CompaniesCacheCompanion extends UpdateCompanion<CompaniesCacheData> {
     Expression<String>? id,
     Expression<String>? name,
     Expression<String>? sehir,
+    Expression<String>? tripTypeIds,
     Expression<bool>? aktif,
     Expression<int>? rowid,
   }) {
@@ -3101,6 +3199,7 @@ class CompaniesCacheCompanion extends UpdateCompanion<CompaniesCacheData> {
       if (id != null) 'id': id,
       if (name != null) 'name': name,
       if (sehir != null) 'sehir': sehir,
+      if (tripTypeIds != null) 'trip_type_ids': tripTypeIds,
       if (aktif != null) 'aktif': aktif,
       if (rowid != null) 'rowid': rowid,
     });
@@ -3110,6 +3209,7 @@ class CompaniesCacheCompanion extends UpdateCompanion<CompaniesCacheData> {
     Value<String>? id,
     Value<String>? name,
     Value<String?>? sehir,
+    Value<String>? tripTypeIds,
     Value<bool>? aktif,
     Value<int>? rowid,
   }) {
@@ -3117,6 +3217,7 @@ class CompaniesCacheCompanion extends UpdateCompanion<CompaniesCacheData> {
       id: id ?? this.id,
       name: name ?? this.name,
       sehir: sehir ?? this.sehir,
+      tripTypeIds: tripTypeIds ?? this.tripTypeIds,
       aktif: aktif ?? this.aktif,
       rowid: rowid ?? this.rowid,
     );
@@ -3134,6 +3235,9 @@ class CompaniesCacheCompanion extends UpdateCompanion<CompaniesCacheData> {
     if (sehir.present) {
       map['sehir'] = Variable<String>(sehir.value);
     }
+    if (tripTypeIds.present) {
+      map['trip_type_ids'] = Variable<String>(tripTypeIds.value);
+    }
     if (aktif.present) {
       map['aktif'] = Variable<bool>(aktif.value);
     }
@@ -3149,6 +3253,7 @@ class CompaniesCacheCompanion extends UpdateCompanion<CompaniesCacheData> {
           ..write('id: $id, ')
           ..write('name: $name, ')
           ..write('sehir: $sehir, ')
+          ..write('tripTypeIds: $tripTypeIds, ')
           ..write('aktif: $aktif, ')
           ..write('rowid: $rowid')
           ..write(')'))
@@ -3523,6 +3628,7 @@ typedef $$TripStopsCacheTableCreateCompanionBuilder =
       Value<String?> irsaliyeNoCikis,
       Value<DateTime?> firmaCikisAt,
       Value<String?> notlar,
+      Value<String?> notlarCikis,
       Value<bool> synced,
       Value<int> retryCount,
       Value<String?> lastError,
@@ -3547,6 +3653,7 @@ typedef $$TripStopsCacheTableUpdateCompanionBuilder =
       Value<String?> irsaliyeNoCikis,
       Value<DateTime?> firmaCikisAt,
       Value<String?> notlar,
+      Value<String?> notlarCikis,
       Value<bool> synced,
       Value<int> retryCount,
       Value<String?> lastError,
@@ -3640,6 +3747,11 @@ class $$TripStopsCacheTableFilterComposer
 
   ColumnFilters<String> get notlar => $composableBuilder(
     column: $table.notlar,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get notlarCikis => $composableBuilder(
+    column: $table.notlarCikis,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -3753,6 +3865,11 @@ class $$TripStopsCacheTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get notlarCikis => $composableBuilder(
+    column: $table.notlarCikis,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<bool> get synced => $composableBuilder(
     column: $table.synced,
     builder: (column) => ColumnOrderings(column),
@@ -3855,6 +3972,11 @@ class $$TripStopsCacheTableAnnotationComposer
   GeneratedColumn<String> get notlar =>
       $composableBuilder(column: $table.notlar, builder: (column) => column);
 
+  GeneratedColumn<String> get notlarCikis => $composableBuilder(
+    column: $table.notlarCikis,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<bool> get synced =>
       $composableBuilder(column: $table.synced, builder: (column) => column);
 
@@ -3925,6 +4047,7 @@ class $$TripStopsCacheTableTableManager
                 Value<String?> irsaliyeNoCikis = const Value.absent(),
                 Value<DateTime?> firmaCikisAt = const Value.absent(),
                 Value<String?> notlar = const Value.absent(),
+                Value<String?> notlarCikis = const Value.absent(),
                 Value<bool> synced = const Value.absent(),
                 Value<int> retryCount = const Value.absent(),
                 Value<String?> lastError = const Value.absent(),
@@ -3947,6 +4070,7 @@ class $$TripStopsCacheTableTableManager
                 irsaliyeNoCikis: irsaliyeNoCikis,
                 firmaCikisAt: firmaCikisAt,
                 notlar: notlar,
+                notlarCikis: notlarCikis,
                 synced: synced,
                 retryCount: retryCount,
                 lastError: lastError,
@@ -3971,6 +4095,7 @@ class $$TripStopsCacheTableTableManager
                 Value<String?> irsaliyeNoCikis = const Value.absent(),
                 Value<DateTime?> firmaCikisAt = const Value.absent(),
                 Value<String?> notlar = const Value.absent(),
+                Value<String?> notlarCikis = const Value.absent(),
                 Value<bool> synced = const Value.absent(),
                 Value<int> retryCount = const Value.absent(),
                 Value<String?> lastError = const Value.absent(),
@@ -3993,6 +4118,7 @@ class $$TripStopsCacheTableTableManager
                 irsaliyeNoCikis: irsaliyeNoCikis,
                 firmaCikisAt: firmaCikisAt,
                 notlar: notlar,
+                notlarCikis: notlarCikis,
                 synced: synced,
                 retryCount: retryCount,
                 lastError: lastError,
@@ -4613,6 +4739,7 @@ typedef $$CompaniesCacheTableCreateCompanionBuilder =
       required String id,
       required String name,
       Value<String?> sehir,
+      Value<String> tripTypeIds,
       Value<bool> aktif,
       Value<int> rowid,
     });
@@ -4621,6 +4748,7 @@ typedef $$CompaniesCacheTableUpdateCompanionBuilder =
       Value<String> id,
       Value<String> name,
       Value<String?> sehir,
+      Value<String> tripTypeIds,
       Value<bool> aktif,
       Value<int> rowid,
     });
@@ -4646,6 +4774,11 @@ class $$CompaniesCacheTableFilterComposer
 
   ColumnFilters<String> get sehir => $composableBuilder(
     column: $table.sehir,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get tripTypeIds => $composableBuilder(
+    column: $table.tripTypeIds,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -4679,6 +4812,11 @@ class $$CompaniesCacheTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get tripTypeIds => $composableBuilder(
+    column: $table.tripTypeIds,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<bool> get aktif => $composableBuilder(
     column: $table.aktif,
     builder: (column) => ColumnOrderings(column),
@@ -4702,6 +4840,11 @@ class $$CompaniesCacheTableAnnotationComposer
 
   GeneratedColumn<String> get sehir =>
       $composableBuilder(column: $table.sehir, builder: (column) => column);
+
+  GeneratedColumn<String> get tripTypeIds => $composableBuilder(
+    column: $table.tripTypeIds,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<bool> get aktif =>
       $composableBuilder(column: $table.aktif, builder: (column) => column);
@@ -4747,12 +4890,14 @@ class $$CompaniesCacheTableTableManager
                 Value<String> id = const Value.absent(),
                 Value<String> name = const Value.absent(),
                 Value<String?> sehir = const Value.absent(),
+                Value<String> tripTypeIds = const Value.absent(),
                 Value<bool> aktif = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => CompaniesCacheCompanion(
                 id: id,
                 name: name,
                 sehir: sehir,
+                tripTypeIds: tripTypeIds,
                 aktif: aktif,
                 rowid: rowid,
               ),
@@ -4761,12 +4906,14 @@ class $$CompaniesCacheTableTableManager
                 required String id,
                 required String name,
                 Value<String?> sehir = const Value.absent(),
+                Value<String> tripTypeIds = const Value.absent(),
                 Value<bool> aktif = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => CompaniesCacheCompanion.insert(
                 id: id,
                 name: name,
                 sehir: sehir,
+                tripTypeIds: tripTypeIds,
                 aktif: aktif,
                 rowid: rowid,
               ),

@@ -122,8 +122,14 @@ eklenecek. Şimdilik bu adımda yapılacak bir şey yok.
 ### B1. Backend adresini ayarla
 `packages/driver_app/env/api.json` dosyasını gerçek backend adresine göre düzenle:
 ```json
-{ "API_BASE_URL": "https://dedemmekatronik.com/backend" }
+{
+  "API_BASE_URL": "https://dedemmekatronik.com/backend",
+  "APK_VERSION_URL": "https://dedemmekatronik.com/apk/version.json"
+}
 ```
+`APK_VERSION_URL`, uygulama içi otomatik güncellemenin (bkz. B3) kontrol
+ettiği adres — genelde değiştirmene gerek yok, `api.example.json`'daki
+varsayılan zaten doğru domain'i gösteriyor.
 
 ### B2. APK'yı derle
 ```bash
@@ -141,12 +147,37 @@ packages/driver_app/build/app/outputs/flutter-apk/app-release.apk
 > bu bir sorun değil. Sadece APK'yı ileride güncellerken **aynı bilgisayardaki**
 > debug keystore ile imzalamaya devam etmen gerekiyor, aksi halde şoförler
 > yeni sürümü "üzerine kurulum" yerine önce eskisini kaldırıp kurmak zorunda kalır.
+> Uygulama içi otomatik güncelleme (bkz. B3) bu durumda sessizce "Tekrar Dene"
+> döngüsüne düşer, bu yüzden bu kural artık daha da kritik.
+
+> **Her yayında:** `packages/driver_app/pubspec.yaml`'daki `version: 1.0.0+N`
+> satırının `+N` kısmını (build numarası) bir önceki yayından **daha büyük**
+> bir değere çıkar — uygulama içi otomatik güncelleme (B3) bunu şoförün
+> telefonundaki sürümle karşılaştırıyor.
 
 ### B3. APK'yı şoförlere ulaştır
-En pratik yollardan biri:
+
+**Otomatik güncelleme (önerilen — şoförler artık uygulama içinden güncelleniyor):**
+APK'nın yanına küçük bir `version.json` da yükle, aynı `public_html/apk/`
+klasörüne:
+```json
+{
+  "versionCode": 2,
+  "versionName": "1.1.0",
+  "apkUrl": "https://dedemmekatronik.com/apk/driver_app.apk",
+  "notes": "Bu sürümde neler değişti (opsiyonel, şoföre gösterilir)"
+}
+```
+`versionCode`, pubspec.yaml'da az önce artırdığın build numarasıyla (`+N`)
+aynı olmalı. Uygulama açılışta bu dosyayı kontrol eder; daha yeni bir
+`versionCode` görürse şoför güncelleyene kadar uygulamayı kullandırmaz
+(zorunlu güncelleme ekranı) — telefona fiziksel erişim gerekmez.
+
+**İlk kurulum (bir şoförün telefonuna henüz hiç kurulmamışsa) hâlâ elle
+yapılıyor:**
 - APK dosyasını Hestia Dosya Yöneticisi'nden `public_html/` altına (ör.
   `public_html/apk/driver_app.apk`) yükleyip `https://dedemmekatronik.com/apk/driver_app.apk`
-  linkini şoförlerle paylaşmak, **veya**
+  linkini şoförle paylaşmak, **veya**
 - WhatsApp/e-posta ile doğrudan dosya olarak göndermek.
 
 ### B4. Telefona kurulum (her şoförün kendi telefonunda)

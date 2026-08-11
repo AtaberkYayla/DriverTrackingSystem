@@ -7,6 +7,7 @@ import '../../providers/app_providers.dart';
 const _rolAdlari = {
   AppRole.admin: 'Admin',
   AppRole.manager: 'Yönetici',
+  AppRole.operator: 'Operatör',
   AppRole.office: 'Onay Verici',
   AppRole.driver: 'Şoför',
 };
@@ -18,6 +19,7 @@ class AccountsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final accountsAsync = ref.watch(accountsProvider);
     final isAdmin = ref.watch(isAdminProvider);
+    final currentUserId = ref.watch(currentProfileProvider).value?.id;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Kullanıcılar')),
@@ -31,7 +33,13 @@ class AccountsScreen extends ConsumerWidget {
           return ListView(
             padding: const EdgeInsets.all(8),
             children: [
-              for (final rol in [AppRole.admin, AppRole.manager, AppRole.office, AppRole.driver])
+              for (final rol in [
+                AppRole.admin,
+                AppRole.manager,
+                AppRole.operator,
+                AppRole.office,
+                AppRole.driver,
+              ])
                 if (gruplar[rol]!.isNotEmpty) ...[
                   Padding(
                     padding: const EdgeInsets.fromLTRB(8, 16, 8, 4),
@@ -41,30 +49,47 @@ class AccountsScreen extends ConsumerWidget {
                     ),
                   ),
                   for (final acc in gruplar[rol]!)
-                    Card(
-                      child: ListTile(
-                        title: Text(acc.fullName),
-                        subtitle: Text(acc.username),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Switch(
-                              value: acc.aktif,
-                              onChanged: (val) async {
-                                await ref
-                                    .read(accountRepositoryProvider)
-                                    .updateAccount(userId: acc.id, aktif: val);
-                                ref.invalidate(accountsProvider);
-                              },
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.edit_outlined),
-                              onPressed: () => _hesapDialog(context, ref, isAdmin, account: acc),
-                            ),
-                          ],
+                    Builder(builder: (context) {
+                      // Yonetici/admin hesaplarina sadece admin dokunabilir (sunucu
+                      // tarafi zaten bunu zorunlu kilar) - butonlar yetkisiz kullaniciya
+                      // hic gosterilmez, tiklayip hata almasina gerek yok.
+                      final duzenlenebilir =
+                          isAdmin || (acc.role != AppRole.manager && acc.role != AppRole.admin);
+                      final kendiHesabi = acc.id == currentUserId;
+                      return Card(
+                        child: ListTile(
+                          title: Text(acc.fullName),
+                          subtitle: Text(acc.username),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Switch(
+                                value: acc.aktif,
+                                onChanged: (!duzenlenebilir || kendiHesabi)
+                                    ? null
+                                    : (val) async {
+                                        await ref
+                                            .read(accountRepositoryProvider)
+                                            .updateAccount(userId: acc.id, aktif: val);
+                                        ref.invalidate(accountsProvider);
+                                      },
+                              ),
+                              if (duzenlenebilir) ...[
+                                IconButton(
+                                  icon: const Icon(Icons.edit_outlined),
+                                  onPressed: () => _hesapDialog(context, ref, isAdmin, account: acc),
+                                ),
+                                if (!kendiHesabi)
+                                  IconButton(
+                                    icon: const Icon(Icons.delete_outline),
+                                    onPressed: () => _hesapSil(context, ref, acc),
+                                  ),
+                              ],
+                            ],
+                          ),
                         ),
-                      ),
-                    ),
+                      );
+                    }),
                 ],
             ],
           );
@@ -96,16 +121,16 @@ class AccountsScreen extends ConsumerWidget {
     }
 
     // Onay Verici (office) hesabi artik olusturulmuyor - admin_web'e sadece
-    // yonetici/admin girer. Yonetici sadece sofor hesabi acabilir; admin
+    // yonetici/admin girer. Yonetici sofor/operator hesabi acabilir; admin
     // ayrica baska yonetici/admin de acabilir.
     final secilebilirRoller = isAdmin
-        ? const [AppRole.driver, AppRole.manager, AppRole.admin]
-        : const [AppRole.driver];
+        ? const [AppRole.driver, AppRole.operator, AppRole.manager, AppRole.admin]
+        : const [AppRole.driver, AppRole.operator];
 
     final fullNameController = TextEditingController(text: account?.fullName);
     final usernameController = TextEditingController(text: account?.username);
     final passwordController = TextEditingController();
-    var seciliRol = account?.role ?? AppRole.office;
+    var seciliRol = account?.role ?? AppRole.driver;
 
     final kaydet = await showDialog<bool>(
       context: context,
@@ -168,6 +193,36 @@ class AccountsScreen extends ConsumerWidget {
         );
       }
       ref.invalidate(accountsProvider);
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Hata: $e')));
+    }
+  }
+
+  Future<void> _hesapSil(BuildContext context, WidgetRef ref, Account acc) async {
+    final onayVerildi = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Hesabı Sil'),
+        content: Text(
+            '${acc.fullName} (${acc.username}) hesabını tamamen silmek istediğinize emin misiniz? Bu işlem geri alınamaz.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('İptal')),
+          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Sil')),
+        ],
+      ),
+    );
+    if (onayVerildi != true) return;
+
+    try {
+      await ref.read(accountRepositoryProvider).deleteAccount(acc.id);
+      ref.invalidate(accountsProvider);
+    } on ApiException catch (e) {
+      if (!context.mounted) return;
+      final mesaj = e.code == 'fk_in_use'
+          ? 'Bu hesabın seferleri/onayları var, silmek yerine pasife alın.'
+          : 'Hata: ${e.message}';
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(mesaj)));
     } catch (e) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Hata: $e')));

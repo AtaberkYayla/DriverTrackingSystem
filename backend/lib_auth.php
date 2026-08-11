@@ -60,6 +60,22 @@ function requireRole(PDO $pdo, array $roles): array
     return $user;
 }
 
+// Operator rolu sadece admin_web'den kendi elle olusturdugu seferlere/
+// duraklara dokunabilir (bkz. trips.created_by_user_id) - manager/admin icin
+// bu kisitlama uygulanmaz, onlar zaten tum seferlere erisebiliyordu.
+function requireTripOwnershipIfOperator(PDO $pdo, array $user, string $tripId): void
+{
+    if ($user['role'] !== 'operator') {
+        return;
+    }
+    $stmt = $pdo->prepare('SELECT created_by_user_id FROM trips WHERE id = ?');
+    $stmt->execute([$tripId]);
+    $row = $stmt->fetch();
+    if ($row === false || $row['created_by_user_id'] !== $user['id']) {
+        json_error('forbidden', 'Bu sefere ait değilsiniz', 403);
+    }
+}
+
 function issueToken(PDO $pdo, string $userId): string
 {
     $raw = bin2hex(random_bytes(32));

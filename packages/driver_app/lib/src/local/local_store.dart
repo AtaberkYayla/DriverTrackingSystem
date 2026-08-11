@@ -201,6 +201,7 @@ class LocalStore {
               id: c.id,
               name: c.name,
               sehir: Value(c.sehir),
+              tripTypeIds: Value(c.tripTypeIds.join(',')),
               aktif: Value(c.aktif),
             )),
       );

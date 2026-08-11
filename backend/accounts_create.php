@@ -15,7 +15,7 @@ $role = (string) ($body['role'] ?? '');
 if ($fullName === '' || $username === '' || $password === '' || $role === '') {
     json_error('invalid_request', 'Eksik alanlar var', 422);
 }
-if (!in_array($role, ['driver', 'office', 'manager', 'admin'], true)) {
+if (!in_array($role, ['driver', 'office', 'manager', 'admin', 'operator'], true)) {
     json_error('invalid_request', 'Geçersiz rol', 422);
 }
 // Sadece admin, manager/admin hesabi olusturabilir - eski kuralla ayni.

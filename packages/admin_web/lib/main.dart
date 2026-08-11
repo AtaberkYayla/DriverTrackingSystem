@@ -8,8 +8,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'src/auth/secure_token_store.dart';
 import 'src/providers/app_providers.dart';
-import 'src/screens/dashboard/trip_list_screen.dart';
 import 'src/screens/login/login_screen.dart';
+import 'src/screens/shell/main_shell.dart';
+import 'src/theme/app_theme.dart';
 
 const _apiBaseUrl = String.fromEnvironment('API_BASE_URL');
 
@@ -46,7 +47,7 @@ class AdminWebApp extends StatelessWidget {
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      theme: ThemeData(colorSchemeSeed: DedemBrand.red, useMaterial3: true),
+      theme: AppTheme.light(),
       home: const _AuthGate(),
     );
   }
@@ -65,7 +66,7 @@ class _AuthGate extends ConsumerWidget {
         if (profile == null || profile.role == AppRole.driver || !profile.aktif) {
           return const LoginScreen();
         }
-        return const TripListScreen();
+        return const MainShell();
       },
     );
   }

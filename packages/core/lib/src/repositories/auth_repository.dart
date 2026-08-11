@@ -60,9 +60,9 @@ class AuthRepository {
     bool? emailBildirimAktif,
   }) async {
     final payload = <String, dynamic>{
-      if (fullName != null) 'full_name': fullName,
-      if (notificationEmail != null) 'notification_email': notificationEmail,
-      if (emailBildirimAktif != null) 'email_bildirim_aktif': emailBildirimAktif,
+      'full_name': ?fullName,
+      'notification_email': ?notificationEmail,
+      'email_bildirim_aktif': ?emailBildirimAktif,
     };
     if (payload.isEmpty) return;
     await api.post('/profile_update.php', body: payload);

@@ -1,0 +1,4 @@
+{
+  "API_BASE_URL": "https://sofortakip.dedemmekatronik.com/backend",
+  "APK_VERSION_URL": "https://sofortakip.dedemmekatronik.com/apk/version.json"
+}

@@ -4,21 +4,24 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../providers/app_providers.dart';
-import '../accounts/accounts_screen.dart';
-import '../master_data/master_data_screen.dart';
-import '../profile/my_profile_screen.dart';
-import '../trip_detail/trip_detail_screen.dart';
+import '../trip_detail/trip_edit_screen.dart';
+import 'create_trip_screen.dart';
+import 'quick_actions.dart';
 
 class TripListScreen extends ConsumerWidget {
   const TripListScreen({super.key});
+
+  void _yenile(WidgetRef ref) {
+    ref.invalidate(tripListProvider);
+    ref.invalidate(referenceDataProvider);
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final tripsAsync = ref.watch(tripListProvider);
     final refDataAsync = ref.watch(referenceDataProvider);
     final dateFormat = DateFormat('dd.MM.yyyy HH:mm');
-    final isManagerOrAdmin = ref.watch(isManagerOrAdminProvider);
-    final isManager = ref.watch(isManagerProvider);
+    final seferOlusturabilir = ref.watch(isManagerOrAdminProvider) || ref.watch(isOperatorProvider);
 
     // Onceki basariyla yuklenen veriyi elde tutup sadece arka planda tazeler;
     // boylece 1 dakikalik otomatik yenilemede tum liste CircularProgressIndicator
@@ -49,42 +52,24 @@ class TripListScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Image.asset(DedemBrand.faviconAssetPath, package: 'core', height: 28),
-            const SizedBox(width: 12),
-            const Text('Seferler'),
-          ],
-        ),
+        title: const Text('Seferler'),
         actions: [
-          if (isManagerOrAdmin)
+          if (seferOlusturabilir)
             IconButton(
-              icon: const Icon(Icons.people_outline),
-              tooltip: 'Kullanıcılar',
-              onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const AccountsScreen()),
-              ),
+              icon: const Icon(Icons.add_location_alt_outlined),
+              tooltip: 'Durak Ekle',
+              onPressed: () => showDurakEkleDialog(context, ref),
             ),
-          if (!isManager)
+          if (ref.watch(isManagerOrAdminProvider))
             IconButton(
-              icon: const Icon(Icons.storage_outlined),
-              tooltip: 'Master Veri Yönetimi',
-              onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const MasterDataScreen()),
-              ),
+              icon: const Icon(Icons.swap_horiz),
+              tooltip: 'Fabrika Giriş/Çıkış (Sefer Böl)',
+              onPressed: () => showFabrikaBolmeDialog(context, ref),
             ),
           IconButton(
-            icon: const Icon(Icons.person_outline),
-            tooltip: 'Profilim',
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const MyProfileScreen()),
-            ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.logout),
-            tooltip: 'Çıkış Yap',
-            onPressed: () => ref.read(authRepositoryProvider).signOut(),
+            icon: const Icon(Icons.refresh),
+            tooltip: 'Yenile',
+            onPressed: () => _yenile(ref),
           ),
         ],
       ),
@@ -96,6 +81,15 @@ class TripListScreen extends ConsumerWidget {
           Expanded(child: body),
         ],
       ),
+      floatingActionButton: seferOlusturabilir
+          ? FloatingActionButton.extended(
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const CreateTripScreen()),
+              ),
+              icon: const Icon(Icons.add),
+              label: const Text('Sefer Oluştur'),
+            )
+          : null,
     );
   }
 }
@@ -119,6 +113,13 @@ List<_TripGroup> _grupla(List<TripStopWithTrip> rows) {
       return _TripGroup(row.trip);
     });
     if (row.stop != null) grup.stops.add(row.stop!);
+  }
+  // Backend'in duz liste siralamasi (butun seferler arasi tek ORDER BY) bir
+  // seferin duraklarini kesintisiz/kronolojik birakmayabilir (baska seferler
+  // araya girebilir); bu yuzden her grup kendi icinde en yeni ustte olacak
+  // sekilde ayrica sıralanir.
+  for (final grup in gruplar.values) {
+    grup.stops.sort((a, b) => b.firmaGirisAt.compareTo(a.firmaGirisAt));
   }
   return [for (final id in sira) gruplar[id]!];
 }
@@ -193,7 +194,7 @@ class _TripGroupCard extends ConsumerWidget {
         const SizedBox(width: 6),
         Expanded(
           flex: 2,
-          child: Text(trip.tarih, style: const TextStyle(fontWeight: FontWeight.w600)),
+          child: Text(trip.tarihGosterim, style: const TextStyle(fontWeight: FontWeight.w600)),
         ),
         Icon(Icons.local_shipping_outlined, size: 15, color: Colors.grey.shade600),
         const SizedBox(width: 6),
@@ -220,6 +221,15 @@ class _TripGroupCard extends ConsumerWidget {
           visualDensity: VisualDensity.compact,
           side: BorderSide.none,
         ),
+        IconButton(
+          icon: const Icon(Icons.edit_outlined),
+          tooltip: 'Seferi Düzenle',
+          onPressed: () => Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => TripEditScreen(trip: trip, initialStops: grup.stops),
+            ),
+          ),
+        ),
         if (isManagerOrAdmin)
           IconButton(
             icon: const Icon(Icons.delete_outline),
@@ -243,6 +253,11 @@ class _TripGroupCard extends ConsumerWidget {
           subtitle: trip.fabrikaCikisAt != null
               ? const Text('Firma girişi bekleniyor · henüz bir firmaya uğramadı.')
               : const Text('Henüz bir firmaya uğramadı (Fabrika Çıkış yapıldı, yolda).'),
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => TripEditScreen(trip: trip, initialStops: grup.stops),
+            ),
+          ),
         ),
       );
     }
@@ -284,7 +299,7 @@ class _TripGroupCard extends ConsumerWidget {
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 _OnayChip(durum: stop.onayDurumu),
-                _SeferChip(durum: stop.seferDurumu),
+                _SeferChip(durum: stop.seferDurumu, kapandiMi: stop.firmaCikisAt != null),
                 if (hizliOnaylanabilir)
                   IconButton(
                     icon: Icon(Icons.check_circle_outline, color: Colors.green.shade700),
@@ -295,12 +310,33 @@ class _TripGroupCard extends ConsumerWidget {
             ),
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute(
-                builder: (_) => TripDetailScreen(stopWithTrip: TripStopWithTrip(trip: trip, stop: stop)),
+                builder: (_) => TripEditScreen(trip: trip, initialStops: grup.stops),
               ),
             ),
           );
         }).toList(),
       ),
+    );
+  }
+}
+
+/// Filtre satırındaki dropdown'ları tarih aralığı butonuyla aynı görsel
+/// ağırlığa (kenarlıklı kutu) getirir - eskiden dropdown'lar kenarlıksız,
+/// tarih butonu kenarlıklıydı, satırda iki farklı bileşen dili görünüyordu.
+class _FiltreKutusu extends StatelessWidget {
+  const _FiltreKutusu({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        border: Border.all(color: Theme.of(context).colorScheme.outline),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: DropdownButtonHideUnderline(child: child),
     );
   }
 }
@@ -330,6 +366,7 @@ class _FilterBar extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final filters = ref.watch(tripFiltersProvider);
     final driversAsync = ref.watch(allDriversProvider);
+    final vehiclesAsync = ref.watch(vehiclesProvider);
     final dateFormat = DateFormat('dd.MM.yyyy');
 
     return Padding(
@@ -345,31 +382,51 @@ class _FilterBar extends ConsumerWidget {
             onPressed: () => _tarihSec(context, ref, filters),
           ),
           driversAsync.maybeWhen(
-            data: (drivers) => DropdownButton<String?>(
-              hint: const Text('Şoför'),
-              value: filters.driverId,
-              items: [
-                const DropdownMenuItem(value: null, child: Text('Tüm şoförler')),
-                ...drivers.map((d) => DropdownMenuItem(value: d.id, child: Text(d.fullName))),
-              ],
-              onChanged: (v) => ref.read(tripFiltersProvider.notifier).state =
-                  filters.copyWith(driverId: v, clearDriver: v == null),
+            data: (drivers) => _FiltreKutusu(
+              child: DropdownButton<String?>(
+                hint: const Text('Şoför'),
+                value: filters.driverId,
+                items: [
+                  const DropdownMenuItem(value: null, child: Text('Tüm şoförler')),
+                  ...drivers.map((d) => DropdownMenuItem(value: d.id, child: Text(d.fullName))),
+                ],
+                onChanged: (v) => ref.read(tripFiltersProvider.notifier).state =
+                    filters.copyWith(driverId: v, clearDriver: v == null),
+              ),
             ),
             orElse: () => const SizedBox.shrink(),
           ),
-          DropdownButton<OnayDurumu?>(
-            hint: const Text('Onay Durumu'),
-            value: filters.onayDurumu,
-            items: [
-              const DropdownMenuItem(value: null, child: Text('Tümü')),
-              ...OnayDurumu.values.map(
-                (d) => DropdownMenuItem(value: d, child: Text(_onayLabel(d))),
+          vehiclesAsync.maybeWhen(
+            data: (vehicles) => _FiltreKutusu(
+              child: DropdownButton<String?>(
+                hint: const Text('Plaka'),
+                value: filters.vehicleId,
+                items: [
+                  const DropdownMenuItem(value: null, child: Text('Tüm plakalar')),
+                  ...vehicles.map((v) => DropdownMenuItem(value: v.id, child: Text(v.plaka))),
+                ],
+                onChanged: (v) => ref.read(tripFiltersProvider.notifier).state =
+                    filters.copyWith(vehicleId: v, clearVehicle: v == null),
               ),
-            ],
-            onChanged: (v) => ref.read(tripFiltersProvider.notifier).state =
-                filters.copyWith(onayDurumu: v, clearOnay: v == null),
+            ),
+            orElse: () => const SizedBox.shrink(),
           ),
-          DropdownButton<SeferDurumu?>(
+          _FiltreKutusu(
+            child: DropdownButton<OnayDurumu?>(
+              hint: const Text('Onay Durumu'),
+              value: filters.onayDurumu,
+              items: [
+                const DropdownMenuItem(value: null, child: Text('Tümü')),
+                ...OnayDurumu.values.map(
+                  (d) => DropdownMenuItem(value: d, child: Text(_onayLabel(d))),
+                ),
+              ],
+              onChanged: (v) => ref.read(tripFiltersProvider.notifier).state =
+                  filters.copyWith(onayDurumu: v, clearOnay: v == null),
+            ),
+          ),
+          _FiltreKutusu(
+            child: DropdownButton<SeferDurumu?>(
             hint: const Text('Sefer Durumu'),
             value: filters.seferDurumu,
             items: [
@@ -380,6 +437,7 @@ class _FilterBar extends ConsumerWidget {
             ],
             onChanged: (v) => ref.read(tripFiltersProvider.notifier).state =
                 filters.copyWith(seferDurumu: v, clearSefer: v == null),
+            ),
           ),
           TextButton.icon(
             icon: const Icon(Icons.filter_alt_off_outlined),
@@ -429,19 +487,26 @@ class _OnayChip extends StatelessWidget {
 }
 
 class _SeferChip extends StatelessWidget {
-  const _SeferChip({required this.durum});
+  const _SeferChip({required this.durum, required this.kapandiMi});
 
   final SeferDurumu durum;
 
+  /// Durak firma cikisi yapilip yapilmadigi (stop.firmaCikisAt != null).
+  /// Sefer durumu elle basarili/basarisiz olarak degistirilmediyse ve durak
+  /// kapandiysa, varsayilan "Devam Ediyor" etiketi yaniltici oluyordu; bu
+  /// durumda "Tamamlandı" gosterilir.
+  final bool kapandiMi;
+
   @override
   Widget build(BuildContext context) {
-    final renk = switch (durum) {
-      SeferDurumu.devamEdiyor => Colors.blueGrey,
-      SeferDurumu.basarili => Colors.green,
-      SeferDurumu.basarisiz => Colors.red,
+    final (etiket, renk) = switch (durum) {
+      SeferDurumu.basarili => (_seferLabel(durum), Colors.green),
+      SeferDurumu.basarisiz => (_seferLabel(durum), Colors.red),
+      SeferDurumu.devamEdiyor when kapandiMi => ('Tamamlandı', Colors.green),
+      SeferDurumu.devamEdiyor => (_seferLabel(durum), Colors.blueGrey),
     };
     return Chip(
-      label: Text(_seferLabel(durum)),
+      label: Text(etiket),
       backgroundColor: renk.withValues(alpha: 0.15),
       labelStyle: TextStyle(color: renk.shade800),
     );

@@ -31,6 +31,7 @@ class TripStop {
     this.onaylandiAt,
     this.seferDurumu = SeferDurumu.devamEdiyor,
     this.notlar,
+    this.notlarCikis,
   });
 
   final String id;
@@ -55,6 +56,7 @@ class TripStop {
   final DateTime? onaylandiAt;
   final SeferDurumu seferDurumu;
   final String? notlar;
+  final String? notlarCikis;
 
   bool get acikMi => firmaCikisAt == null;
 
@@ -92,6 +94,7 @@ class TripStop {
             ? SeferDurumu.devamEdiyor
             : SeferDurumu.fromJson(json['sefer_durumu'] as String),
         notlar: json['notlar'] as String?,
+        notlarCikis: json['notlar_cikis'] as String?,
       );
 
   Map<String, dynamic> toJson() {
@@ -115,6 +118,7 @@ class TripStop {
       'onaylandi_at': onaylandiAt?.toIso8601String(),
       'sefer_durumu': seferDurumu.toJson(),
       'notlar': notlar,
+      'notlar_cikis': notlarCikis,
     };
 
     if (id.isNotEmpty) {
@@ -125,6 +129,7 @@ class TripStop {
   }
 
   TripStop copyWith({
+    String? tripId,
     int? sira,
     DateTime? firmaGirisAt,
     String? tripTypeId,
@@ -142,11 +147,12 @@ class TripStop {
     DateTime? onaylandiAt,
     SeferDurumu? seferDurumu,
     String? notlar,
+    String? notlarCikis,
   }) {
     return TripStop(
       id: id,
       clientStopId: clientStopId,
-      tripId: tripId,
+      tripId: tripId ?? this.tripId,
       sira: sira ?? this.sira,
       firmaGirisAt: firmaGirisAt ?? this.firmaGirisAt,
       tripTypeId: tripTypeId ?? this.tripTypeId,
@@ -164,6 +170,7 @@ class TripStop {
       onaylandiAt: onaylandiAt ?? this.onaylandiAt,
       seferDurumu: seferDurumu ?? this.seferDurumu,
       notlar: notlar ?? this.notlar,
+      notlarCikis: notlarCikis ?? this.notlarCikis,
     );
   }
 }

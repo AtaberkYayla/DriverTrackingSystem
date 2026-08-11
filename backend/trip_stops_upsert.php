@@ -1,7 +1,10 @@
 <?php
 require_once __DIR__ . '/lib_bootstrap.php';
 
-$user = requireRole($pdo, ['driver']);
+// Sofor sadece kendi seferine durak ekleyebilir. manager/admin herhangi bir
+// sefere durak ekleyebilir (mevcut genis yetki). operator sadece admin_web'den
+// kendi olusturdugu sefere (created_by_user_id) durak ekleyebilir.
+$user = requireRole($pdo, ['driver', 'manager', 'admin', 'operator']);
 $body = readJsonBody();
 
 $clientStopId = (string) ($body['client_stop_id'] ?? '');
@@ -13,9 +16,13 @@ if ($clientStopId === '' || $tripId === '') {
 $tripStmt = $pdo->prepare('SELECT * FROM trips WHERE id = ?');
 $tripStmt->execute([$tripId]);
 $trip = $tripStmt->fetch();
-if ($trip === false || $trip['driver_id'] !== $user['id']) {
+if ($trip === false) {
+    json_error('not_found', 'Sefer bulunamadı', 404);
+}
+if ($user['role'] === 'driver' && $trip['driver_id'] !== $user['id']) {
     json_error('forbidden', 'Bu sefere ait değilsiniz', 403);
 }
+requireTripOwnershipIfOperator($pdo, $user, $tripId);
 
 $existingStmt = $pdo->prepare('SELECT * FROM trip_stops WHERE client_stop_id = ?');
 $existingStmt->execute([$clientStopId]);
@@ -35,22 +42,25 @@ $gidilenSirketFree = $body['gidilen_sirket_free'] ?? null;
 $irsaliyeNoGiris = $body['irsaliye_no_giris'] ?? null;
 $irsaliyeNoCikis = $body['irsaliye_no_cikis'] ?? null;
 $firmaCikisAt = $body['firma_cikis_at'] ?? null;
+$notlar = $body['notlar'] ?? null;
+$notlarCikis = $body['notlar_cikis'] ?? null;
 
 $pdo->prepare(
     'INSERT INTO trip_stops (id, client_stop_id, trip_id, sira, firma_giris_at, trip_type_id, requester_id,
         cikis_nedeni, gidilen_il, gidilen_ilce, gidilen_sirket_id, gidilen_sirket_free, irsaliye_no_giris,
-        irsaliye_no_cikis, firma_cikis_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        irsaliye_no_cikis, firma_cikis_at, notlar, notlar_cikis)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON DUPLICATE KEY UPDATE
        sira = VALUES(sira), firma_giris_at = VALUES(firma_giris_at), trip_type_id = VALUES(trip_type_id),
        requester_id = VALUES(requester_id), cikis_nedeni = VALUES(cikis_nedeni), gidilen_il = VALUES(gidilen_il),
        gidilen_ilce = VALUES(gidilen_ilce), gidilen_sirket_id = VALUES(gidilen_sirket_id),
        gidilen_sirket_free = VALUES(gidilen_sirket_free), irsaliye_no_giris = VALUES(irsaliye_no_giris),
-       irsaliye_no_cikis = VALUES(irsaliye_no_cikis), firma_cikis_at = VALUES(firma_cikis_at)'
+       irsaliye_no_cikis = VALUES(irsaliye_no_cikis), firma_cikis_at = VALUES(firma_cikis_at),
+       notlar = VALUES(notlar), notlar_cikis = VALUES(notlar_cikis)'
 )->execute([
     $id, $clientStopId, $tripId, $sira, $firmaGirisAt, $tripTypeId, $requesterId, $cikisNedeni,
     $gidilenIl, $gidilenIlce, $gidilenSirketId, $gidilenSirketFree, $irsaliyeNoGiris, $irsaliyeNoCikis,
-    $firmaCikisAt,
+    $firmaCikisAt, $notlar, $notlarCikis,
 ]);
 
 $select = $pdo->prepare('SELECT * FROM trip_stops WHERE id = ?');

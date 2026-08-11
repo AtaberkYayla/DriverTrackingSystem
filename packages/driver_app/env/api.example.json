@@ -1,3 +1,4 @@
 {
-  "API_BASE_URL": "https://api.dedemmekatronik.com/backend"
+  "API_BASE_URL": "https://api.dedemmekatronik.com/backend",
+  "APK_VERSION_URL": "https://dedemmekatronik.com/apk/version.json"
 }

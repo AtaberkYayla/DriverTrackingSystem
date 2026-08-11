@@ -2,7 +2,24 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "driver_app (Chrome/Emulator)",
+      "name": "driver_app - Local XAMPP",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "cwd": "packages/driver_app",
+      "args": ["--dart-define=API_BASE_URL=http://localhost/backend"]
+    },
+    {
+      "name": "admin_web - Local XAMPP",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "cwd": "packages/admin_web",
+      "deviceId": "chrome",
+      "args": ["--dart-define=API_BASE_URL=http://localhost/backend"]
+    },
+    {
+      "name": "driver_app - env/api.json (dikkat: gerçek deploy adresi)",
       "request": "launch",
       "type": "dart",
       "program": "lib/main.dart",
@@ -10,7 +27,7 @@
       "args": ["--dart-define-from-file=env/api.json"]
     },
     {
-      "name": "admin_web (Chrome)",
+      "name": "admin_web - env/api.json (dikkat: gerçek deploy adresi)",
       "request": "launch",
       "type": "dart",
       "program": "lib/main.dart",
